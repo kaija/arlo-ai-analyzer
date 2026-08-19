@@ -1,0 +1,208 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Arlo — Insights</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="shared/tokens.css" />
+<style>
+  .insights-body { padding: 24px; max-width: 1320px; }
+  .insights-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; }
+  @media (max-width: 1180px) { .insights-grid { grid-template-columns: repeat(2, 1fr); } }
+  @media (max-width: 760px) { .insights-grid { grid-template-columns: 1fr; } }
+
+  .insight-card { padding: 24px; display: flex; flex-direction: column; gap: 12px; }
+  .ins-eyebrow { display: flex; align-items: center; justify-content: space-between; }
+  .ins-eyebrow span { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted); }
+  .est-badge { display: inline-flex; align-items: center; gap: 4px; height: 18px; padding: 0 7px; border-radius: 999px; background: rgba(0,0,0,0.05); color: var(--muted); font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.03em; }
+  :root[data-theme="dark"] .est-badge { background: rgba(255,255,255,0.08); }
+  .ins-number { font-size: 32px; font-weight: 700; letter-spacing: -0.01em; }
+  .ins-line { font-size: 12.5px; color: var(--muted); line-height: 1.5; }
+  .ins-line b { color: var(--fg); font-weight: 600; }
+  .ins-body { flex: 1 1 auto; display: flex; flex-direction: column; gap: 10px; }
+
+  .rank-list { display: flex; flex-direction: column; gap: 8px; }
+  .rank-row { display: flex; align-items: center; gap: 10px; font-size: 12px; }
+  .rank-row .rname { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--fg); }
+  .rank-row .rbar-track { flex: 1 1 90px; height: 6px; border-radius: 999px; background: var(--border-strong); overflow: hidden; }
+  .rank-row .rbar-fill { height: 100%; border-radius: 999px; background: var(--accent); }
+  .rank-row .rval { font-variant-numeric: tabular-nums; color: var(--muted); width: 56px; text-align: right; flex: 0 0 auto; }
+
+  .mini-stack { display: flex; height: 10px; border-radius: 4px; overflow: hidden; background: var(--border-strong); }
+  .mini-stack span { height: 100%; }
+  .mini-legend { display: flex; flex-wrap: wrap; gap: 10px; font-size: 11px; color: var(--muted); }
+  .mini-legend .lk { display: inline-flex; align-items: center; gap: 5px; }
+  .mini-legend .sw { width: 8px; height: 8px; border-radius: 2px; }
+  .premium-tag { font-size: 10px; font-weight: 700; color: var(--warning); background: var(--warning-wash); border: 1px solid var(--warning-border); border-radius: 999px; padding: 0 6px; height: 16px; display: inline-flex; align-items: center; margin-left: 5px; }
+
+  .kv-row { display: flex; align-items: baseline; justify-content: space-between; font-size: 12.5px; padding: 6px 0; border-bottom: 1px solid var(--border); }
+  .kv-row:last-child { border-bottom: none; }
+  .kv-row .k { color: var(--muted); }
+  .kv-row .v { font-variant-numeric: tabular-nums; font-weight: 600; }
+  .budget-track { height: 8px; border-radius: 999px; background: var(--border-strong); overflow: hidden; margin-top: 4px; }
+  .budget-fill { height: 100%; border-radius: 999px; background: var(--accent); }
+  .budget-fill.over-warn { background: var(--warning); }
+
+  .ins-link { display: inline-flex; align-items: center; gap: 5px; font-size: 12px; font-weight: 600; color: var(--accent); margin-top: auto; padding-top: 4px; }
+  .ins-link:hover { color: var(--accent-hover); }
+  .ins-link svg { width: 13px; height: 13px; }
+</style>
+</head>
+<body>
+<div class="app-shell" data-od-id="insights-screen">
+  <aside class="sidebar" data-od-id="sidebar">
+    <div class="sidebar-brand">
+      <span class="mark"><svg viewBox="0 0 24 24" fill="none"><path d="M6 18 12 6l6 12" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+      <span>Arlo</span>
+    </div>
+    <nav class="sidebar-nav">
+      <a class="nav-item" href="dashboard.html" data-od-id="nav-dashboard">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="20" x2="4" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="20" y1="20" x2="20" y2="14"/></svg>
+        <span>Dashboard</span>
+      </a>
+      <a class="nav-item" href="sessions.html" data-od-id="nav-sessions">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/></svg>
+        <span>Sessions</span>
+      </a>
+      <a class="nav-item active" href="insights.html" data-od-id="nav-insights">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+        <span>Insights</span>
+      </a>
+      <a class="nav-item" href="settings.html" data-od-id="nav-settings">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="21" x2="4" y2="14"/><line x1="4" y1="10" x2="4" y2="3"/><line x1="12" y1="21" x2="12" y2="12"/><line x1="12" y1="8" x2="12" y2="3"/><line x1="20" y1="21" x2="20" y2="16"/><line x1="20" y1="12" x2="20" y2="3"/><line x1="1" y1="14" x2="7" y2="14"/><line x1="9" y1="8" x2="15" y2="8"/><line x1="17" y1="16" x2="23" y2="16"/></svg>
+        <span>Settings</span>
+      </a>
+    </nav>
+    <div class="sidebar-foot">
+      <button class="sidebar-collapse-btn" data-sidebar-toggle aria-label="Collapse sidebar">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+      </button>
+    </div>
+  </aside>
+
+  <div class="main-col">
+    <div class="titlebar-spacer"></div>
+    <div class="topbar">
+      <div class="topbar-title">Insights</div>
+      <div class="topbar-actions">
+        <button class="theme-toggle" data-theme-toggle aria-label="Toggle theme">
+          <svg class="moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.8A9 9 0 1 1 11.2 3 7 7 0 0 0 21 12.8z"/></svg>
+          <svg class="sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><line x1="12" y1="2" x2="12" y2="4"/><line x1="12" y1="20" x2="12" y2="22"/><line x1="4.2" y1="4.2" x2="5.6" y2="5.6"/><line x1="18.4" y1="18.4" x2="19.8" y2="19.8"/><line x1="2" y1="12" x2="4" y2="12"/><line x1="20" y1="12" x2="22" y2="12"/><line x1="4.2" y1="19.8" x2="5.6" y2="18.4"/><line x1="18.4" y1="5.6" x2="19.8" y2="4.2"/></svg>
+        </button>
+      </div>
+    </div>
+
+    <div class="content-scroll">
+      <div class="insights-body">
+        <div class="insights-grid" data-od-id="insight-cards-grid">
+
+          <!-- Context health -->
+          <div class="card insight-card" data-od-id="insight-context-health">
+            <div class="ins-eyebrow"><span>Context health</span></div>
+            <div class="ins-number tnum">3 sessions</div>
+            <div class="ins-line">above 75% of their model's context window right now. <b>arlo-ai-analyzer</b> is closest to a forced compaction, at 78% of Opus 5's 1M window.</div>
+            <div class="ins-body">
+              <div class="rank-list">
+                <div class="rank-row"><span class="rname">arlo-ai-analyzer</span><span class="rbar-track"><span class="rbar-fill band-warning" style="width:78%; background:var(--warning)"></span></span><span class="rval">78%</span></div>
+                <div class="rank-row"><span class="rname">payments-svc · main</span><span class="rbar-track"><span class="rbar-fill" style="width:91%; background:var(--critical)"></span></span><span class="rval">91%</span></div>
+                <div class="rank-row"><span class="rname">growth-experiments</span><span class="rbar-track"><span class="rbar-fill" style="width:82%; background:var(--warning)"></span></span><span class="rval">82%</span></div>
+              </div>
+            </div>
+            <a class="ins-link" href="sessions.html" data-od-id="insight-link-context-health">View flagged sessions <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="7" y1="17" x2="17" y2="7"/><polyline points="7 7 17 7 17 17"/></svg></a>
+          </div>
+
+          <!-- Cache efficiency -->
+          <div class="card insight-card" data-od-id="insight-cache-efficiency">
+            <div class="ins-eyebrow"><span>Cache efficiency</span></div>
+            <div class="ins-number tnum">95% hit rate</div>
+            <div class="ins-line">Cache-read tokens outnumber fresh input 46 to 1 this period. <span class="est-badge">Estimate</span> <b>56% of spend</b> touches cache writes or reads once the 1h premium is applied.</div>
+            <div class="ins-body">
+              <div class="mini-stack">
+                <span style="width:66.7%; background:var(--series-3)"></span>
+                <span style="width:33.3%; background:var(--series-2)"></span>
+              </div>
+              <div class="mini-legend">
+                <span class="lk"><span class="sw" style="background:var(--series-3)"></span>Cache write 5m · 22.0M</span>
+                <span class="lk"><span class="sw" style="background:var(--series-2)"></span>Cache write 1h · 11.0M <span class="premium-tag">2× premium</span></span>
+              </div>
+            </div>
+            <a class="ins-link" href="dashboard.html" data-od-id="insight-link-cache-efficiency">View cache breakdown <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="7" y1="17" x2="17" y2="7"/><polyline points="7 7 17 7 17 17"/></svg></a>
+          </div>
+
+          <!-- MCP & skill attribution -->
+          <div class="card insight-card" data-od-id="insight-mcp-attribution">
+            <div class="ins-eyebrow"><span>MCP &amp; skill attribution</span></div>
+            <div class="ins-number tnum">Claude Browser</div>
+            <div class="ins-line"><b>1,501 requests</b> — the single largest MCP server or skill by volume this period.</div>
+            <div class="ins-body">
+              <div class="rank-list">
+                <div class="rank-row"><span class="rname">Claude Browser (MCP)</span><span class="rbar-track"><span class="rbar-fill" style="width:100%"></span></span><span class="rval">1,501</span></div>
+                <div class="rank-row"><span class="rname">code-search skill</span><span class="rbar-track"><span class="rbar-fill" style="width:59%"></span></span><span class="rval">892</span></div>
+                <div class="rank-row"><span class="rname">Linear MCP</span><span class="rbar-track"><span class="rbar-fill" style="width:41%"></span></span><span class="rval">614</span></div>
+                <div class="rank-row"><span class="rname">Playwright MCP</span><span class="rbar-track"><span class="rbar-fill" style="width:27%"></span></span><span class="rval">403</span></div>
+              </div>
+            </div>
+            <a class="ins-link" href="dashboard.html" data-od-id="insight-link-mcp-attribution">View all servers &amp; skills <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="7" y1="17" x2="17" y2="7"/><polyline points="7 7 17 7 17 17"/></svg></a>
+          </div>
+
+          <!-- Model right-sizing -->
+          <div class="card insight-card" data-od-id="insight-model-rightsizing">
+            <div class="ins-eyebrow"><span>Model right-sizing</span><span class="est-badge">Estimate</span></div>
+            <div class="ins-number tnum">412 requests</div>
+            <div class="ins-line">Opus 5 requests produced <b>under 500 output tokens</b> — short enough that Sonnet 5 likely would have matched quality. At Sonnet 5 rates: <b>$61 less</b>.</div>
+            <div class="ins-body">
+              <div class="kv-row"><span class="k">Opus 5 requests analyzed</span><span class="v">3,828</span></div>
+              <div class="kv-row"><span class="k">Under 500 output tokens</span><span class="v">412 · 10.8%</span></div>
+              <div class="kv-row"><span class="k">Modeled at Sonnet 5 rates</span><span class="v">−$61.00</span></div>
+            </div>
+            <a class="ins-link" href="dashboard.html" data-od-id="insight-link-model-rightsizing">See the flagged requests <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="7" y1="17" x2="17" y2="7"/><polyline points="7 7 17 7 17 17"/></svg></a>
+          </div>
+
+          <!-- Budget & forecast -->
+          <div class="card insight-card" data-od-id="insight-budget-forecast">
+            <div class="ins-eyebrow"><span>Budget &amp; forecast</span></div>
+            <div class="ins-number tnum">$468.91 MTD</div>
+            <div class="ins-line">7-day burn rate of <b>$36.06/day</b> puts month-end around <span class="est-badge">Estimate</span> <b>$937.69</b> — 93.8% of your $1,000 budget.</div>
+            <div class="ins-body">
+              <div class="kv-row"><span class="k">7-day burn rate</span><span class="v">$252.40</span></div>
+              <div class="kv-row"><span class="k">Projected month-end</span><span class="v">$937.69</span></div>
+              <div>
+                <div class="budget-track"><div class="budget-fill over-warn" style="width:93.8%"></div></div>
+              </div>
+            </div>
+            <a class="ins-link" href="settings.html" data-od-id="insight-link-budget-forecast">Adjust budget <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="7" y1="17" x2="17" y2="7"/><polyline points="7 7 17 7 17 17"/></svg></a>
+          </div>
+
+          <!-- Tool failures -->
+          <div class="card insight-card" data-od-id="insight-tool-failures">
+            <div class="ins-eyebrow"><span>Tool failures</span></div>
+            <div class="ins-number tnum">382 truncated</div>
+            <div class="ins-line">2.4% of requests hit <b>max_tokens</b> before finishing; <b>61</b> more were refused outright.</div>
+            <div class="ins-body">
+              <div class="mini-stack">
+                <span style="width:91.1%; background:var(--good)"></span>
+                <span style="width:6.1%; background:var(--muted-2)"></span>
+                <span style="width:2.4%; background:var(--warning)"></span>
+                <span style="width:0.4%; background:var(--critical)"></span>
+              </div>
+              <div class="mini-legend">
+                <span class="lk"><span class="sw" style="background:var(--good)"></span>end_turn · 14,529</span>
+                <span class="lk"><span class="sw" style="background:var(--muted-2)"></span>tool_use · 977</span>
+                <span class="lk"><span class="sw" style="background:var(--warning)"></span>max_tokens · 382</span>
+                <span class="lk"><span class="sw" style="background:var(--critical)"></span>refusal · 61</span>
+              </div>
+            </div>
+            <a class="ins-link" href="sessions.html" data-od-id="insight-link-tool-failures">View affected sessions <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="7" y1="17" x2="17" y2="7"/><polyline points="7 7 17 7 17 17"/></svg></a>
+          </div>
+
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="shared/app.js"></script>
+</body>
+</html>

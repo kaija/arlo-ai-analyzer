@@ -1,6 +1,6 @@
 use std::sync::Mutex;
 use tauri::{Emitter, Manager};
-use usage_core::{Db, Session};
+use usage_core::{Db, Session, SessionRequest};
 
 struct AppState {
     db: Mutex<Db>,
@@ -10,6 +10,11 @@ struct AppState {
 fn list_sessions(state: tauri::State<AppState>) -> Result<Vec<Session>, String> {
     let db = state.db.lock().map_err(|e| e.to_string())?;
     db.all_sessions().map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+fn get_session_requests(session_id: String) -> Result<Vec<SessionRequest>, String> {
+    usage_core::get_session_requests(&session_id).map_err(|e| e.to_string())
 }
 
 #[tauri::command]
@@ -56,7 +61,7 @@ pub fn run() {
 
             Ok(())
         })
-        .invoke_handler(tauri::generate_handler![list_sessions, rescan])
+        .invoke_handler(tauri::generate_handler![list_sessions, get_session_requests, rescan])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }

@@ -1,0 +1,388 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Arlo — Session · arlo-ai-analyzer</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="shared/tokens.css" />
+<style>
+  .detail-body { padding: 20px 24px 40px; max-width: 1200px; }
+  .back-row { display: flex; align-items: center; gap: 8px; margin-bottom: 14px; }
+  .back-link { display: inline-flex; align-items: center; gap: 5px; color: var(--muted); font-size: 12.5px; font-weight: 600; cursor: pointer; }
+  .back-link:hover { color: var(--accent); }
+  .back-link svg { width: 14px; height: 14px; }
+
+  .sess-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 20px; margin-bottom: 20px; flex-wrap: wrap; }
+  .sess-header h1 { font-size: 19px; font-weight: 700; }
+  .sess-header .meta-line { display: flex; align-items: center; gap: 8px; margin-top: 6px; font-size: 12.5px; color: var(--muted); }
+  .sess-header .meta-line .branch-pill { font-family: "SF Mono","JetBrains Mono",monospace; font-size: 11px; }
+  .sess-stats { display: flex; gap: 28px; }
+  .sess-stats .item { text-align: right; }
+  .sess-stats .item .lbl { font-size: 11px; color: var(--muted); }
+  .sess-stats .item .val { font-size: 17px; font-weight: 700; margin-top: 2px; }
+
+  .chart-card .card-head { align-items: center; }
+  .ceiling-note { font-size: 11.5px; color: var(--muted); }
+  .ctx-chart-wrap { position: relative; padding: 20px 24px 8px; }
+  .ctx-svg { width: 100%; height: 220px; display: block; overflow: visible; }
+  .ctx-annot { position: absolute; background: var(--surface); border: 1px solid var(--border-strong); border-radius: 8px; padding: 6px 9px; font-size: 11px; box-shadow: var(--shadow-md); pointer-events: none; white-space: nowrap; }
+  .ctx-annot .arrow { color: var(--muted-2); margin: 0 3px; }
+
+  .req-toolbar { display: flex; align-items: center; justify-content: space-between; margin: 24px 0 10px; }
+  .req-count { font-size: 12px; color: var(--muted); }
+  .raw-toggle { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--muted); }
+  .switch { width: 34px; height: 20px; border-radius: 999px; background: var(--border-strong); position: relative; cursor: pointer; flex: 0 0 auto; transition: background 150ms ease; }
+  .switch::after { content: ""; position: absolute; top: 2px; left: 2px; width: 16px; height: 16px; border-radius: 999px; background: var(--surface); box-shadow: var(--shadow-sm); transition: transform 150ms ease; }
+  .switch.on { background: var(--accent); }
+  .switch.on::after { transform: translateX(14px); }
+
+  .req-table-wrap { border: 1px solid var(--border); border-radius: 16px; overflow: hidden; background: var(--surface); }
+  .req-row { display: grid; grid-template-columns: 96px 150px 74px 1fr 92px 150px 30px; align-items: center; gap: 10px; padding: 9px 14px; border-bottom: 1px solid var(--border); font-size: 12px; cursor: pointer; }
+  .req-row:last-child { border-bottom: none; }
+  .req-row:hover { background: var(--accent-wash); }
+  .req-row .time { color: var(--muted); }
+  .req-model { display: flex; align-items: center; gap: 6px; min-width: 0; }
+  .req-model .dot { width: 8px; height: 8px; border-radius: 2px; flex: 0 0 auto; }
+  .req-model span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .tok-bar { display: flex; align-items: center; gap: 8px; min-width: 0; }
+  .tok-mini { display: flex; height: 12px; width: 96px; border-radius: 3px; overflow: hidden; flex: 0 0 auto; background: var(--border); }
+  .tok-mini span { height: 100%; }
+  .tok-total { font-variant-numeric: tabular-nums; color: var(--fg); }
+  .tok-raw { display: none; gap: 10px; font-variant-numeric: tabular-nums; color: var(--muted); font-size: 11px; }
+  .tok-raw b { color: var(--fg); font-weight: 600; }
+  .req-row.raw-mode .tok-mini, .req-row.raw-mode .tok-total { display: none; }
+  .req-row.raw-mode .tok-raw { display: flex; }
+  .stop-tag { display: inline-flex; align-items: center; gap: 4px; height: 20px; padding: 0 8px; border-radius: 999px; font-size: 10.5px; font-weight: 600; white-space: nowrap; }
+  .stop-end_turn { background: var(--good-wash); color: var(--good); }
+  .stop-tool_use { background: rgba(0,0,0,0.05); color: var(--muted); }
+  :root[data-theme="dark"] .stop-tool_use { background: rgba(255,255,255,0.07); }
+  .stop-max_tokens { background: var(--warning-wash); color: var(--warning); }
+  .stop-refusal { background: var(--critical-wash); color: var(--critical); }
+  .skill-pill { font-size: 10.5px; color: var(--accent); background: var(--accent-wash); border-radius: 999px; padding: 0 7px; height: 18px; display: inline-flex; align-items: center; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .cost-cell { text-align: right; font-variant-numeric: tabular-nums; }
+  .transcript-link { width: 24px; height: 24px; border-radius: 6px; display: flex; align-items: center; justify-content: center; color: var(--muted-2); }
+  .transcript-link:hover { color: var(--accent); background: var(--accent-wash); }
+  .transcript-link svg { width: 13px; height: 13px; }
+  .req-head-row { display: grid; grid-template-columns: 96px 150px 74px 1fr 92px 150px 30px; gap: 10px; padding: 8px 14px; font-size: 10.5px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.03em; color: var(--muted); border-bottom: 1px solid var(--border); }
+  .req-load-more { padding: 12px; text-align: center; border-top: 1px solid var(--border); }
+
+  @media (max-width: 900px) {
+    .req-row, .req-head-row { grid-template-columns: 80px 120px 64px 1fr 80px 30px; }
+    .req-row .cost-cell:nth-child(6), .req-head-row span:nth-child(6) { display: none; }
+  }
+</style>
+</head>
+<body>
+<div class="app-shell" data-od-id="session-detail-screen">
+  <aside class="sidebar" data-od-id="sidebar">
+    <div class="sidebar-brand">
+      <span class="mark"><svg viewBox="0 0 24 24" fill="none"><path d="M6 18 12 6l6 12" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+      <span>Arlo</span>
+    </div>
+    <nav class="sidebar-nav">
+      <a class="nav-item" href="dashboard.html" data-od-id="nav-dashboard">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="20" x2="4" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="20" y1="20" x2="20" y2="14"/></svg>
+        <span>Dashboard</span>
+      </a>
+      <a class="nav-item active" href="sessions.html" data-od-id="nav-sessions">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/></svg>
+        <span>Sessions</span>
+      </a>
+      <a class="nav-item" href="insights.html" data-od-id="nav-insights">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+        <span>Insights</span>
+      </a>
+      <a class="nav-item" href="settings.html" data-od-id="nav-settings">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="21" x2="4" y2="14"/><line x1="4" y1="10" x2="4" y2="3"/><line x1="12" y1="21" x2="12" y2="12"/><line x1="12" y1="8" x2="12" y2="3"/><line x1="20" y1="21" x2="20" y2="16"/><line x1="20" y1="12" x2="20" y2="3"/><line x1="1" y1="14" x2="7" y2="14"/><line x1="9" y1="8" x2="15" y2="8"/><line x1="17" y1="16" x2="23" y2="16"/></svg>
+        <span>Settings</span>
+      </a>
+    </nav>
+    <div class="sidebar-foot">
+      <button class="sidebar-collapse-btn" data-sidebar-toggle aria-label="Collapse sidebar">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+      </button>
+    </div>
+  </aside>
+
+  <div class="main-col">
+    <div class="titlebar-spacer"></div>
+    <div class="topbar">
+      <div class="topbar-title">Session detail</div>
+      <div class="topbar-actions">
+        <button class="theme-toggle" data-theme-toggle aria-label="Toggle theme">
+          <svg class="moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.8A9 9 0 1 1 11.2 3 7 7 0 0 0 21 12.8z"/></svg>
+          <svg class="sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><line x1="12" y1="2" x2="12" y2="4"/><line x1="12" y1="20" x2="12" y2="22"/><line x1="4.2" y1="4.2" x2="5.6" y2="5.6"/><line x1="18.4" y1="18.4" x2="19.8" y2="19.8"/><line x1="2" y1="12" x2="4" y2="12"/><line x1="20" y1="12" x2="22" y2="12"/><line x1="4.2" y1="19.8" x2="5.6" y2="18.4"/><line x1="18.4" y1="5.6" x2="19.8" y2="4.2"/></svg>
+        </button>
+      </div>
+    </div>
+
+    <div class="content-scroll">
+      <div class="detail-body">
+        <div class="back-row">
+          <a class="back-link" href="sessions.html" data-od-id="back-to-sessions">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+            Sessions
+          </a>
+        </div>
+
+        <div class="sess-header" data-od-id="session-header">
+          <div>
+            <h1>arlo-ai-analyzer</h1>
+            <div class="meta-line">
+              <span>arlo-ai-analyzer</span> <span>·</span>
+              <span class="pill-mono branch-pill">feat/context-meter</span> <span>·</span>
+              <span>Aug 18, 3:12 PM</span> <span>·</span>
+              <span>2h 28m</span>
+            </div>
+          </div>
+          <div class="sess-stats">
+            <div class="item"><div class="lbl">Requests</div><div class="val tnum">212</div></div>
+            <div class="item"><div class="lbl">Tokens</div><div class="val tnum">812K</div></div>
+            <div class="item"><div class="lbl">Cost</div><div class="val tnum">$18.42</div></div>
+            <div class="item"><div class="lbl">Compactions</div><div class="val tnum">1</div></div>
+          </div>
+        </div>
+
+        <div class="card chart-card" data-od-id="context-timeline-card">
+          <div class="card-head">
+            <div class="card-title">Context usage across session</div>
+            <div class="ceiling-note">Ceiling: claude-opus-5 · 1,000,000 tokens</div>
+          </div>
+          <div class="ctx-chart-wrap">
+            <svg class="ctx-svg" id="ctxSvg" viewBox="0 0 1000 220" preserveAspectRatio="none"></svg>
+            <div class="chart-tooltip" id="ctxTooltip"></div>
+          </div>
+        </div>
+
+        <div class="req-toolbar">
+          <div class="req-count" data-od-id="request-count">Showing <strong id="reqShown">40</strong> of <strong>212</strong> requests</div>
+          <div class="raw-toggle" data-od-id="raw-counts-toggle">
+            <span>Raw token counts</span>
+            <div class="switch" id="rawToggle" role="switch" aria-checked="false" tabindex="0"></div>
+          </div>
+        </div>
+        <div class="req-table-wrap" data-od-id="request-timeline-table">
+          <div class="req-head-row">
+            <span>Time</span><span>Model</span><span>Effort</span><span>Tokens (in·out·cw5·cw1h·read)</span><span>Cost</span><span>Stop / skill</span><span></span>
+          </div>
+          <div id="reqRows"></div>
+          <div class="req-load-more"><button class="btn btn-secondary btn-small" id="loadMoreBtn">Load 40 more</button></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="shared/app.js"></script>
+<script>
+(function () {
+  function mulberry32(seed) {
+    return function () {
+      seed |= 0; seed = (seed + 0x6D2B79F5) | 0;
+      let t = Math.imul(seed ^ (seed >>> 15), 1 | seed);
+      t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+      return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    };
+  }
+  const rng = mulberry32(4471123);
+
+  const MODELS = [
+    { key: "opus-5", name: "claude-opus-5", color: "var(--series-1)" },
+    { key: "sonnet-5", name: "claude-sonnet-5", color: "var(--series-2)" },
+    { key: "haiku-4-5", name: "claude-haiku-4-5", color: "var(--series-5)" },
+  ];
+  const EFFORTS = ["medium", "medium", "high", "high", "xhigh"];
+  const STOPS = ["end_turn", "end_turn", "end_turn", "tool_use", "tool_use", "max_tokens", "refusal"];
+  const SKILLS = [null, null, null, "Claude Browser (MCP)", "code-search skill", "Linear MCP"];
+  const KIND_COLORS = { input: "var(--series-1)", output: "var(--series-7)", cache_w5: "var(--series-3)", cache_w1h: "var(--series-2)", cache_read: "var(--series-recessive)" };
+
+  const CEILING = 1000000;
+  const N = 212, SAMPLE = 40;
+  const COMPACT_AT = 0.58; // fraction through session where compaction fires
+
+  // ---------- build the full context-usage curve (exactly one point per request index) ----------
+  const compactIdx0 = Math.round(COMPACT_AT * (N - 1)); // index that peaks right before compaction fires
+  const curve = [];
+  let ctx = 4000;
+  for (let i = 0; i < N; i++) {
+    if (i === compactIdx0) {
+      curve.push({ i, ctx: 134490, compactFrom: true });
+      ctx = 134490;
+      continue;
+    }
+    if (i === compactIdx0 + 1) {
+      ctx = 16216;
+      curve.push({ i, ctx: 16216, compactTo: true });
+      continue;
+    }
+    const frac = i / (N - 1);
+    ctx += (frac < COMPACT_AT ? 900 : 2450) + rng() * 1400;
+    curve.push({ i, ctx: Math.round(ctx) });
+  }
+  // normalize final point to exactly 784,000 (78% of 1M, matches the live alert)
+  const last = curve[curve.length - 1];
+  const scaleFrom = curve.findIndex(p => p.compactTo) + 1;
+  const preLast = curve[scaleFrom].ctx;
+  const targetLast = 784000;
+  for (let k = scaleFrom; k < curve.length; k++) {
+    const t = (curve[k].ctx - preLast) / (last.ctx - preLast || 1);
+    curve[k].ctx = Math.round(preLast + t * (targetLast - preLast));
+  }
+
+  function renderCtxChart() {
+    const svg = document.getElementById("ctxSvg");
+    const W = 1000, H = 220, PAD_L = 46, PAD_R = 10, PAD_T = 14, PAD_B = 22;
+    const plotW = W - PAD_L - PAD_R, plotH = H - PAD_T - PAD_B;
+    const x = (i) => PAD_L + (i / (N - 1)) * plotW;
+    const y = (v) => PAD_T + plotH - Math.min(v / CEILING, 1.08) * plotH;
+
+    let svgHtml = "";
+    // gridlines + y labels
+    [0, 0.25, 0.5, 0.75, 1].forEach(f => {
+      const yy = y(f * CEILING);
+      svgHtml += `<line x1="${PAD_L}" y1="${yy}" x2="${W - PAD_R}" y2="${yy}" stroke="var(--border)" stroke-width="1"/>`;
+      svgHtml += `<text x="${PAD_L - 8}" y="${yy + 3}" text-anchor="end" font-size="9.5" fill="var(--muted-2)">${f === 1 ? "1M" : Math.round(f * CEILING / 1000) + "K"}</text>`;
+    });
+    // ceiling line
+    const ceilY = y(CEILING);
+    svgHtml += `<line x1="${PAD_L}" y1="${ceilY}" x2="${W - PAD_R}" y2="${ceilY}" stroke="var(--critical)" stroke-width="1.5" stroke-dasharray="4 3"/>`;
+    svgHtml += `<text x="${W - PAD_R}" y="${ceilY - 6}" text-anchor="end" font-size="10" fill="var(--critical)" font-weight="600">1,000,000 ceiling</text>`;
+
+    // area fill
+    let areaPath = `M ${x(0)} ${y(0)} `;
+    curve.forEach(p => { areaPath += `L ${x(p.i)} ${y(p.ctx)} `; });
+    areaPath += `L ${x(N - 1)} ${y(0)} Z`;
+    svgHtml += `<path d="${areaPath}" fill="var(--accent)" opacity="0.08"/>`;
+
+    // line — break into two segments around the compaction drop
+    const compactIdx = curve.findIndex(p => p.compactTo);
+    const seg1 = curve.slice(0, compactIdx);
+    const seg2 = curve.slice(compactIdx);
+    [seg1, seg2].forEach(seg => {
+      let d = seg.map((p, k) => (k === 0 ? "M" : "L") + " " + x(p.i) + " " + y(p.ctx)).join(" ");
+      svgHtml += `<path d="${d}" fill="none" stroke="var(--accent)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>`;
+    });
+
+    // compaction marker
+    const dropPoint = curve[compactIdx - 1];
+    const risePoint = curve[compactIdx];
+    svgHtml += `<line x1="${x(dropPoint.i)}" y1="${PAD_T}" x2="${x(dropPoint.i)}" y2="${H - PAD_B}" stroke="var(--muted-2)" stroke-width="1" stroke-dasharray="2 3"/>`;
+    svgHtml += `<circle cx="${x(dropPoint.i)}" cy="${y(dropPoint.ctx)}" r="4" fill="var(--surface)" stroke="var(--accent)" stroke-width="2"/>`;
+    svgHtml += `<circle cx="${x(risePoint.i)}" cy="${y(risePoint.ctx)}" r="4" fill="var(--surface)" stroke="var(--accent)" stroke-width="2"/>`;
+
+    // end marker
+    svgHtml += `<circle cx="${x(N - 1)}" cy="${y(last.ctx)}" r="5" fill="var(--accent)" stroke="var(--surface)" stroke-width="2"/>`;
+
+    // hit layer for hover crosshair
+    svgHtml += `<rect id="ctxHit" x="${PAD_L}" y="0" width="${plotW}" height="${H}" fill="transparent"/>`;
+    svgHtml += `<line id="ctxCrosshair" x1="0" y1="0" x2="0" y2="${H - PAD_B}" stroke="var(--muted-2)" stroke-width="1" opacity="0" />`;
+
+    svg.innerHTML = svgHtml;
+
+    // compaction annotation (HTML overlay, positioned in %)
+    const wrap = document.querySelector(".ctx-chart-wrap");
+    const old = wrap.querySelector(".ctx-annot"); if (old) old.remove();
+    const annot = document.createElement("div");
+    annot.className = "ctx-annot";
+    annot.innerHTML = `Compacted · <b class="tnum">134,490</b><span class="arrow">→</span><b class="tnum">16,216</b> tokens`;
+    const leftPct = (x(dropPoint.i) / W) * 100;
+    annot.style.left = `calc(${leftPct}% + 10px)`;
+    annot.style.top = "18px";
+    wrap.appendChild(annot);
+
+    // crosshair interactivity
+    const hit = svg.querySelector("#ctxHit");
+    const crosshair = svg.querySelector("#ctxCrosshair");
+    const tooltip = document.getElementById("ctxTooltip");
+    hit.addEventListener("pointermove", (e) => {
+      const rect = svg.getBoundingClientRect();
+      const relX = ((e.clientX - rect.left) / rect.width) * W;
+      const i = Math.max(0, Math.min(N - 1, Math.round(((relX - PAD_L) / plotW) * (N - 1))));
+      const p = curve[i];
+      crosshair.setAttribute("x1", x(i)); crosshair.setAttribute("x2", x(i)); crosshair.setAttribute("opacity", "1");
+      tooltip.innerHTML = `<div class="tt-title">Request #${i + 1}</div><div class="tt-row"><span class="tt-name">Context in use</span><span class="tt-val">${p.ctx.toLocaleString()}</span></div><div class="tt-row"><span class="tt-name">% of ceiling</span><span class="tt-val">${Math.round(p.ctx / CEILING * 100)}%</span></div>`;
+      tooltip.classList.add("show");
+      const wrapRect = wrap.getBoundingClientRect();
+      let left = (e.clientX - wrapRect.left) + 14, top = (e.clientY - wrapRect.top) - 40;
+      tooltip.style.left = left + "px"; tooltip.style.top = top + "px";
+    });
+    hit.addEventListener("pointerleave", () => { crosshair.setAttribute("opacity", "0"); tooltip.classList.remove("show"); });
+  }
+
+  // ---------- request rows (sampled) ----------
+  const requests = [];
+  const startTime = new Date("2026-08-18T15:12:00");
+  for (let i = 0; i < N; i++) {
+    const t = new Date(startTime.getTime() + i * 42000);
+    const model = MODELS[rng() < 0.75 ? 0 : rng() < 0.6 ? 1 : 2];
+    const input = 200 + Math.floor(rng() * 1800);
+    const output = 40 + Math.floor(rng() * 900);
+    const cache_w5 = rng() < 0.5 ? Math.floor(rng() * 4000) : 0;
+    const cache_w1h = rng() < 0.15 ? Math.floor(rng() * 9000) : 0;
+    const cache_read = Math.floor((curve[i] ? curve[i].ctx : curve[curve.length - 1].ctx) * (0.7 + rng() * 0.25));
+    const total = input + output + cache_w5 + cache_w1h + cache_read;
+    const cost = +(total / 1e6 * 3.2).toFixed(4);
+    requests.push({
+      idx: i, time: t, model, effort: EFFORTS[Math.floor(rng() * EFFORTS.length)],
+      input, output, cache_w5, cache_w1h, cache_read, total, cost,
+      stop: STOPS[Math.floor(rng() * STOPS.length)], skill: SKILLS[Math.floor(rng() * SKILLS.length)],
+      transcriptLine: 900 + i * 14,
+    });
+  }
+
+  const STOP_LABEL = { end_turn: "end_turn", tool_use: "tool_use", max_tokens: "max_tokens", refusal: "refusal" };
+  let visibleCount = SAMPLE;
+  let rawMode = false;
+
+  function fmtT(v) { return v >= 1000 ? (v / 1000).toFixed(1) + "K" : v.toString(); }
+  function fmtTime(d) { return d.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", second: "2-digit" }); }
+
+  function renderRows() {
+    const rowsEl = document.getElementById("reqRows");
+    rowsEl.innerHTML = "";
+    const step = Math.max(1, Math.floor(N / visibleCount));
+    const shown = [];
+    for (let i = 0; i < N && shown.length < visibleCount; i += step) shown.push(requests[i]);
+    document.getElementById("reqShown").textContent = shown.length;
+    shown.forEach(r => {
+      const row = document.createElement("div");
+      row.className = "req-row" + (rawMode ? " raw-mode" : "");
+      const kinds = [["input", r.input], ["output", r.output], ["cache_w5", r.cache_w5], ["cache_w1h", r.cache_w1h], ["cache_read", r.cache_read]];
+      const miniBar = kinds.map(([k, v]) => `<span style="width:${(v / r.total * 100).toFixed(1)}%; background:${KIND_COLORS[k]}"></span>`).join("");
+      const rawCounts = `<span title="input">${fmtT(r.input)}</span><span title="output">${fmtT(r.output)}</span><span title="cache write 5m">${fmtT(r.cache_w5)}</span><span title="cache write 1h">${fmtT(r.cache_w1h)}</span><span title="cache read"><b>${fmtT(r.cache_read)}</b></span>`;
+      row.innerHTML = `
+        <span class="time mono">${fmtTime(r.time)}</span>
+        <span class="req-model"><span class="dot" style="background:${r.model.color}"></span><span>${r.model.name}</span></span>
+        <span class="effort-badge effort-${r.effort}">${r.effort}</span>
+        <span class="tok-bar">
+          <span class="tok-mini">${miniBar}</span>
+          <span class="tok-total">${fmtT(r.total)}</span>
+          <span class="tok-raw">${rawCounts}</span>
+        </span>
+        <span class="cost-cell">$${r.cost.toFixed(4)}</span>
+        <span style="display:flex; align-items:center; gap:6px; min-width:0;">
+          <span class="stop-tag stop-${r.stop}">${STOP_LABEL[r.stop]}</span>
+          ${r.skill ? `<span class="skill-pill">${r.skill}</span>` : ""}
+        </span>
+        <a class="transcript-link" href="#" title="transcript.jsonl:${r.transcriptLine}" data-od-id="transcript-link-${r.idx}">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="7" y1="17" x2="17" y2="7"/><polyline points="7 7 17 7 17 17"/></svg>
+        </a>`;
+      rowsEl.appendChild(row);
+    });
+    document.getElementById("loadMoreBtn").style.display = visibleCount >= N ? "none" : "inline-flex";
+  }
+
+  document.getElementById("loadMoreBtn").addEventListener("click", () => { visibleCount = Math.min(N, visibleCount + 40); renderRows(); });
+  const toggle = document.getElementById("rawToggle");
+  function setRaw(v) { rawMode = v; toggle.classList.toggle("on", v); toggle.setAttribute("aria-checked", String(v)); renderRows(); }
+  toggle.addEventListener("click", () => setRaw(!rawMode));
+  toggle.addEventListener("keydown", (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setRaw(!rawMode); } });
+
+  renderCtxChart();
+  renderRows();
+})();
+</script>
+</body>
+</html>

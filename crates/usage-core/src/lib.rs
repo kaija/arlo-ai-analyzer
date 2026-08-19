@@ -6,8 +6,9 @@ pub mod sources;
 pub mod watcher;
 
 pub use db::Db;
-pub use model::{Session, ToolKind};
+pub use model::{Session, SessionRequest, ToolKind};
 pub use source::UsageSource;
+pub use sources::claude_code::get_session_requests;
 
 use anyhow::Result;
 

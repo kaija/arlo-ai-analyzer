@@ -28,3 +28,19 @@ pub fn estimate_cost(session: &Session) -> f64 {
         + session.cache_creation_tokens as f64 / per_million * rate.cache_write
         + session.cache_read_tokens as f64 / per_million * rate.cache_read
 }
+
+/// Estimated cost in USD for a single API request by token counts and model name.
+pub fn estimate_request_cost(
+    model: &str,
+    input: u64,
+    output: u64,
+    cache_write: u64,
+    cache_read: u64,
+) -> f64 {
+    let rate = rate_for(model);
+    let m = 1_000_000.0;
+    input as f64 / m * rate.input
+        + output as f64 / m * rate.output
+        + cache_write as f64 / m * rate.cache_write
+        + cache_read as f64 / m * rate.cache_read
+}

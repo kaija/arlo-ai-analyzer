@@ -1,0 +1,759 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Arlo — Dashboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="shared/tokens.css" />
+<style>
+  .filterbar { justify-content: flex-start; }
+  .filterbar .grow { flex: 1 1 auto; }
+
+  .dash-body { padding: 24px; max-width: 1400px; }
+  .section-gap { margin-top: 24px; }
+
+  .chart-card .card-head { align-items: flex-start; }
+  .legend { display: flex; flex-wrap: wrap; gap: 12px; }
+  .legend-item { display: flex; align-items: center; gap: 6px; font-size: 11.5px; color: var(--muted); }
+  .legend-key { width: 9px; height: 9px; border-radius: 2px; flex: 0 0 auto; }
+
+  .chart-area { position: relative; padding: 20px 24px 8px; }
+  .chart-plot { position: relative; height: 320px; display: flex; }
+  .y-axis { display: flex; flex-direction: column; justify-content: space-between; width: 56px; flex: 0 0 auto; text-align: right; padding-right: 10px; }
+  .y-axis span { font-size: 10.5px; color: var(--muted-2); font-variant-numeric: tabular-nums; transform: translateY(-50%); }
+  .plot-inner { position: relative; flex: 1 1 auto; border-left: 1px solid var(--border); }
+  .gridlines { position: absolute; inset: 0; }
+  .gridlines .gl { position: absolute; left: 0; right: 0; border-top: 1px solid var(--border); }
+  .bars-row { position: absolute; inset: 0; display: flex; align-items: flex-end; gap: 2px; padding: 0 2px; }
+  .bar-col { flex: 1 1 0; min-width: 3px; height: 100%; display: flex; flex-direction: column-reverse; align-items: stretch; justify-content: flex-start; cursor: default; position: relative; }
+  .bar-col.clickable { cursor: pointer; }
+  .bar-col .stack { width: 100%; display: flex; flex-direction: column-reverse; align-self: center; max-width: 24px; margin: 0 auto; }
+  .bar-seg { width: 100%; margin-bottom: 1px; transition: filter 120ms ease; }
+  .bar-seg:last-child { margin-bottom: 0; }
+  .bar-col:hover .bar-seg { filter: brightness(0.92); }
+  :root[data-theme="dark"] .bar-col:hover .bar-seg { filter: brightness(1.18); }
+  .bar-col.dimmed .bar-seg { opacity: 0.22; }
+  .baseline { position: absolute; left: 0; right: 0; bottom: 0; border-top: 1px solid var(--border-strong); }
+  .x-axis { display: flex; gap: 2px; padding: 6px 2px 0 58px; }
+  .x-axis span { flex: 1 1 0; min-width: 0; text-align: center; font-size: 10px; color: var(--muted-2); font-variant-numeric: tabular-nums; white-space: nowrap; overflow: visible; position: relative; z-index: 1; }
+
+  .kind-row { display: flex; flex-wrap: wrap; gap: 8px; padding: 0 24px 20px; }
+  .kind-pill { display: inline-flex; align-items: center; gap: 7px; height: 28px; padding: 0 12px 0 10px; border-radius: 999px; border: 1px solid var(--border-strong); background: var(--surface); font-size: 12px; font-weight: 500; cursor: pointer; color: var(--fg); }
+  .kind-pill .sw { width: 9px; height: 9px; border-radius: 2px; }
+  .kind-pill.off { color: var(--muted-2); border-style: dashed; }
+  .kind-pill.off .sw { opacity: 0.3; }
+  .kind-pill .pct { color: var(--muted-2); font-variant-numeric: tabular-nums; font-size: 11px; }
+  .kind-hint { font-size: 11.5px; color: var(--muted); padding: 0 24px 16px; margin-top: -6px; }
+
+  .tri-tables { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+  .tri-tables .card-head { padding: 12px 16px; }
+  .tri-tables .dtable td, .tri-tables .dtable th { padding: 7px 8px; }
+  .tri-tables .name-cell { display: flex; align-items: center; gap: 6px; min-width: 0; }
+  .tri-tables .name-cell .dot { width: 7px; height: 7px; border-radius: 2px; flex: 0 0 auto; }
+  .tri-tables .name-cell span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .table-scroll { max-height: 320px; overflow-y: auto; }
+
+  @media (max-width: 1100px) {
+    .tri-tables { grid-template-columns: 1fr; }
+  }
+  @media (max-width: 720px) {
+    .stat-grid { grid-template-columns: repeat(2, 1fr); }
+  }
+</style>
+</head>
+<body>
+<div class="app-shell" data-od-id="dashboard-screen">
+  <aside class="sidebar" data-od-id="sidebar">
+    <div class="sidebar-brand">
+      <span class="mark"><svg viewBox="0 0 24 24" fill="none"><path d="M6 18 12 6l6 12" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+      <span>Arlo</span>
+    </div>
+    <nav class="sidebar-nav">
+      <a class="nav-item active" href="dashboard.html" data-od-id="nav-dashboard">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="20" x2="4" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="20" y1="20" x2="20" y2="14"/></svg>
+        <span>Dashboard</span>
+      </a>
+      <a class="nav-item" href="sessions.html" data-od-id="nav-sessions">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/></svg>
+        <span>Sessions</span>
+      </a>
+      <a class="nav-item" href="insights.html" data-od-id="nav-insights">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+        <span>Insights</span>
+      </a>
+      <a class="nav-item" href="settings.html" data-od-id="nav-settings">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="21" x2="4" y2="14"/><line x1="4" y1="10" x2="4" y2="3"/><line x1="12" y1="21" x2="12" y2="12"/><line x1="12" y1="8" x2="12" y2="3"/><line x1="20" y1="21" x2="20" y2="16"/><line x1="20" y1="12" x2="20" y2="3"/><line x1="1" y1="14" x2="7" y2="14"/><line x1="9" y1="8" x2="15" y2="8"/><line x1="17" y1="16" x2="23" y2="16"/></svg>
+        <span>Settings</span>
+      </a>
+    </nav>
+    <div class="sidebar-foot">
+      <button class="sidebar-collapse-btn" data-sidebar-toggle aria-label="Collapse sidebar">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+      </button>
+    </div>
+  </aside>
+
+  <div class="main-col">
+    <div class="titlebar-spacer"></div>
+    <div class="topbar">
+      <div class="topbar-title">Dashboard</div>
+      <div class="topbar-actions">
+        <button class="theme-toggle" data-theme-toggle aria-label="Toggle theme">
+          <svg class="moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.8A9 9 0 1 1 11.2 3 7 7 0 0 0 21 12.8z"/></svg>
+          <svg class="sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><line x1="12" y1="2" x2="12" y2="4"/><line x1="12" y1="20" x2="12" y2="22"/><line x1="4.2" y1="4.2" x2="5.6" y2="5.6"/><line x1="18.4" y1="18.4" x2="19.8" y2="19.8"/><line x1="2" y1="12" x2="4" y2="12"/><line x1="20" y1="12" x2="22" y2="12"/><line x1="4.2" y1="19.8" x2="5.6" y2="18.4"/><line x1="18.4" y1="5.6" x2="19.8" y2="4.2"/></svg>
+        </button>
+      </div>
+    </div>
+
+    <div class="state-switcher" data-od-id="preview-state-switcher">
+      <span class="lbl">Preview state</span>
+      <button class="seg-btn active" data-preview="live">Live data</button>
+      <button class="seg-btn" data-preview="scanning">First-run scan</button>
+      <button class="seg-btn" data-preview="empty">No logs found</button>
+    </div>
+
+    <div class="content-scroll">
+      <!-- ============ LIVE STATE ============ -->
+      <div data-view="live">
+        <div class="alert-banner" data-dismissible data-od-id="context-alert-banner">
+          <span class="icon-tile"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 18a8 8 0 1 1 16 0"/><line x1="12" y1="18" x2="16" y2="11"/></svg></span>
+          <div class="body">
+            <div><strong>Session arlo-ai-analyzer is at 78% of Opus 5's context window</strong> (784K / 1M).</div>
+            <div class="meta">Consider /compact, or hand off to a fresh session. · 2m ago</div>
+          </div>
+          <div class="actions">
+            <a class="btn btn-secondary btn-small" href="session-detail.html" data-od-id="alert-view-session">View session</a>
+            <button class="btn btn-ghost btn-small" data-dismiss aria-label="Dismiss">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+            </button>
+          </div>
+        </div>
+
+        <div class="filterbar" data-od-id="filter-bar">
+          <div class="field" id="dateRangeField" data-od-id="filter-date-range">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+            <span id="dateRangeLabel">All time</span>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+          </div>
+          <div class="seg" id="dateRangeSeg" data-od-id="filter-date-presets">
+            <button class="seg-btn" data-range="7d">7d</button>
+            <button class="seg-btn" data-range="30d">30d</button>
+            <button class="seg-btn" data-range="90d">90d</button>
+            <button class="seg-btn active" data-range="all">All</button>
+            <button class="seg-btn" data-range="custom">Custom</button>
+          </div>
+          <div class="sep"></div>
+          <div class="seg" id="measureSeg" data-od-id="filter-measure">
+            <button class="seg-btn active" data-measure="tokens">Tokens</button>
+            <button class="seg-btn" data-measure="requests">Requests</button>
+            <button class="seg-btn" data-measure="cost">Cost</button>
+          </div>
+          <div class="sep"></div>
+          <div class="seg" id="granSeg" data-od-id="filter-granularity">
+            <button class="seg-btn" data-gran="hour">Hour</button>
+            <button class="seg-btn active" data-gran="day">Day</button>
+            <button class="seg-btn" data-gran="week">Week</button>
+          </div>
+          <div class="field" id="stackByField" data-od-id="filter-stackby">
+            <span>Stack by: <strong id="stackByLabel">Model</strong></span>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+          </div>
+          <div class="grow"></div>
+          <div class="chip-add" id="addFilterChip" data-od-id="filter-chip-add">+ Filter</div>
+        </div>
+        <div id="chipRow" style="display:flex; gap:6px; padding: 0 24px 12px; flex-wrap:wrap;" data-od-id="filter-chip-row"></div>
+
+        <div class="warn-strip" data-dismissible data-od-id="unpriced-warning-strip">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.3 3.6 1.8 18a1.8 1.8 0 0 0 1.5 2.7h17.4a1.8 1.8 0 0 0 1.5-2.7L13.7 3.6a1.8 1.8 0 0 0-3.4 0z"/><line x1="12" y1="9" x2="12" y2="13.5"/></svg>
+          <span><strong>12 models unpriced</strong> — 1,984 requests / 17.4M tokens excluded from cost totals. <a href="settings.html#pricing" data-od-id="warning-view-link">View</a></span>
+          <button class="dismiss" data-dismiss aria-label="Dismiss warning"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+        </div>
+
+        <div class="dash-body">
+          <div class="stat-grid" data-od-id="stat-tiles">
+            <div class="stat-tile" data-od-id="stat-value">
+              <div class="stat-label">API-equivalent value
+                <span class="info-dot" tabindex="0">i
+                  <span class="pop">What these tokens would cost at standard API rates — not money charged under your subscription. A measure of usage, not a bill.</span>
+                </span>
+              </div>
+              <div class="stat-value tnum">$1,693.34</div>
+              <div class="stat-sub"><span class="good">8.5× value</span> vs $200/mo plan · $0.78 effective /Mtok</div>
+            </div>
+            <div class="stat-tile" data-od-id="stat-requests">
+              <div class="stat-label">Requests</div>
+              <div class="stat-value tnum">15,949</div>
+              <div class="stat-sub">across 275 sessions</div>
+            </div>
+            <div class="stat-tile" data-od-id="stat-tokens">
+              <div class="stat-label">Tokens</div>
+              <div class="stat-value tnum">2.18B</div>
+              <div class="stat-sub">2.07B cache read · 95%</div>
+            </div>
+            <div class="stat-tile" data-od-id="stat-active-days">
+              <div class="stat-label">Active days</div>
+              <div class="stat-value tnum">47</div>
+              <div class="stat-sub">89 projects · 75 branches</div>
+            </div>
+          </div>
+
+          <div class="card chart-card section-gap" data-od-id="main-chart-card">
+            <div class="card-head">
+              <div>
+                <div class="card-title">Usage over time</div>
+                <div class="breadcrumb" id="breadcrumb" style="margin-top:4px;">All time</div>
+              </div>
+              <div class="legend" id="legend"></div>
+            </div>
+            <div class="chart-area">
+              <div class="chart-plot">
+                <div class="y-axis" id="yAxis"></div>
+                <div class="plot-inner">
+                  <div class="gridlines" id="gridlines"></div>
+                  <div class="bars-row" id="barsRow"></div>
+                  <div class="baseline"></div>
+                </div>
+              </div>
+              <div class="x-axis" id="xAxis"></div>
+              <div class="chart-tooltip" id="chartTooltip"></div>
+            </div>
+            <div class="kind-row" id="kindRow" data-od-id="token-kind-pills"></div>
+            <div class="kind-hint" id="kindHint"></div>
+          </div>
+
+          <div class="tri-tables section-gap" data-od-id="breakdown-tables">
+            <div class="card" data-od-id="table-by-model">
+              <div class="card-head"><div class="card-title">By model</div></div>
+              <div class="table-scroll">
+                <table class="dtable" data-sortable id="tblModel">
+                  <thead><tr>
+                    <th class="sortable sort-active" data-sort-key="name">Name <span class="sort-arrow">↓</span></th>
+                    <th class="sortable num" data-sort-key="req">Req <span class="sort-arrow">↕</span></th>
+                    <th class="sortable num" data-sort-key="tok">Tokens <span class="sort-arrow">↕</span></th>
+                    <th class="sortable num" data-sort-key="cost">Cost <span class="sort-arrow">↕</span></th>
+                  </tr></thead>
+                  <tbody id="tblModelBody"></tbody>
+                </table>
+              </div>
+            </div>
+            <div class="card" data-od-id="table-by-project">
+              <div class="card-head"><div class="card-title">By project</div></div>
+              <div class="table-scroll">
+                <table class="dtable" data-sortable id="tblProject">
+                  <thead><tr>
+                    <th class="sortable sort-active" data-sort-key="name">Name <span class="sort-arrow">↓</span></th>
+                    <th class="sortable num" data-sort-key="req">Req <span class="sort-arrow">↕</span></th>
+                    <th class="sortable num" data-sort-key="tok">Tokens <span class="sort-arrow">↕</span></th>
+                    <th class="sortable num" data-sort-key="cost">Cost <span class="sort-arrow">↕</span></th>
+                  </tr></thead>
+                  <tbody id="tblProjectBody"></tbody>
+                </table>
+              </div>
+            </div>
+            <div class="card" data-od-id="table-by-branch">
+              <div class="card-head"><div class="card-title">By branch</div></div>
+              <div class="table-scroll">
+                <table class="dtable" data-sortable id="tblBranch">
+                  <thead><tr>
+                    <th class="sortable sort-active" data-sort-key="name">Name <span class="sort-arrow">↓</span></th>
+                    <th class="sortable num" data-sort-key="req">Req <span class="sort-arrow">↕</span></th>
+                    <th class="sortable num" data-sort-key="tok">Tokens <span class="sort-arrow">↕</span></th>
+                    <th class="sortable num" data-sort-key="cost">Cost <span class="sort-arrow">↕</span></th>
+                  </tr></thead>
+                  <tbody id="tblBranchBody"></tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ============ FIRST-RUN SCAN STATE ============ -->
+      <div data-view="scanning" hidden data-od-id="scan-state">
+        <div class="scan-state" style="padding-top:120px;">
+          <div class="glyph"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.6" y2="16.6"/></svg></div>
+          <h3>Scanning Claude Code logs</h3>
+          <p id="scanStatusLine">Reading transcripts from ~/.claude/projects — this only happens once.</p>
+          <div class="progress-track"><div class="progress-fill" id="scanProgressFill" style="width:0%"></div></div>
+          <div class="scan-meta" id="scanMeta">0 MB / 234 MB · 0 / 275 files</div>
+          <div class="scan-log mono" id="scanLog"></div>
+        </div>
+      </div>
+
+      <!-- ============ EMPTY STATE ============ -->
+      <div data-view="empty" hidden data-od-id="empty-state">
+        <div class="empty-state" style="padding-top:120px;">
+          <div class="glyph"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h11l5 5v11a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2z"/><path d="M14 4v5h5"/></svg></div>
+          <h3>No Claude Code logs found</h3>
+          <p>Arlo reads transcripts from <code class="pill-mono">~/.claude/projects</code>. Run Claude Code at least once, or point Arlo at a different logs directory.</p>
+          <div style="display:flex; gap:8px; margin-top:8px;">
+            <button class="btn btn-primary" id="empty-rescan-btn" data-od-id="empty-rescan-btn">Re-scan</button>
+            <a class="btn btn-secondary" href="settings.html" data-od-id="empty-settings-link">Change logs directory</a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="shared/app.js"></script>
+<script>
+(function () {
+  // ---------- deterministic PRNG ----------
+  function mulberry32(seed) {
+    return function () {
+      seed |= 0; seed = (seed + 0x6D2B79F5) | 0;
+      let t = Math.imul(seed ^ (seed >>> 15), 1 | seed);
+      t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+      return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    };
+  }
+  const rng = mulberry32(20260818);
+
+  // ---------- fixed dimension definitions ----------
+  const MODELS = [
+    { key: "opus-5", name: "claude-opus-5", color: "var(--series-1)", w: 0.24 },
+    { key: "sonnet-5", name: "claude-sonnet-5", color: "var(--series-2)", w: 0.40 },
+    { key: "fable-5", name: "claude-fable-5", color: "var(--series-3)", w: 0.10 },
+    { key: "opus-4-8", name: "claude-opus-4-8", color: "var(--series-4)", w: 0.12 },
+    { key: "haiku-4-5", name: "claude-haiku-4-5", color: "var(--series-5)", w: 0.11 },
+    { key: "sonnet-4-6", name: "claude-sonnet-4-6", color: "var(--series-6)", w: 0.03 },
+  ];
+  const KINDS = [
+    { key: "input", name: "Input", color: "var(--series-1)", w: 45000000 },
+    { key: "output", name: "Output", color: "var(--series-7)", w: 32000000 },
+    { key: "cache_w5", name: "Cache write 5m", color: "var(--series-3)", w: 22000000 },
+    { key: "cache_w1h", name: "Cache write 1h", color: "var(--series-2)", w: 11000000 },
+    { key: "cache_read", name: "Cache read", color: "var(--series-recessive)", w: 2070000000 },
+  ];
+  const PROJECTS = [
+    { name: "arlo-ai-analyzer", w: 0.18 }, { name: "api-gateway", w: 0.13 },
+    { name: "design-system", w: 0.10 }, { name: "infra-terraform", w: 0.08 },
+    { name: "docs-site", w: 0.06 }, { name: "mobile-app", w: 0.05 },
+    { name: "+ 83 more projects", w: 0.40, isOther: true },
+  ];
+  const BRANCHES = [
+    { name: "main", w: 0.22 }, { name: "feat/context-meter", w: 0.09 },
+    { name: "feat/insights-cards", w: 0.07 }, { name: "fix/cache-pricing", w: 0.06 },
+    { name: "chore/deps", w: 0.05 }, { name: "feat/session-timeline", w: 0.04 },
+    { name: "+ 69 more branches", w: 0.47, isOther: true },
+  ];
+
+  const TOTAL_TOKENS = 2180000000, TOTAL_REQUESTS = 15949, TOTAL_COST = 1693.34;
+
+  // ---------- 52-day calendar, 47 active (5 gap days) ----------
+  const END_DATE = new Date("2026-08-18T00:00:00");
+  const DAYS = 52, GAP_INDEXES = new Set([3, 14, 27, 33, 46]);
+  const dayDates = [];
+  for (let i = DAYS - 1; i >= 0; i--) {
+    const d = new Date(END_DATE); d.setDate(d.getDate() - i);
+    dayDates.push(d);
+  }
+  const activeIdx = dayDates.map((_, i) => i).filter(i => !GAP_INDEXES.has(i));
+
+  function genWeights(n) {
+    const arr = [];
+    for (let i = 0; i < n; i++) {
+      let v = 0.4 + rng() * 0.8;
+      if (rng() < 0.1) v *= 2.3;
+      arr.push(v);
+    }
+    return arr;
+  }
+  function normalizeToTotal(weights, total) {
+    const s = weights.reduce((a, b) => a + b, 0);
+    const out = weights.map(w => (w / s) * total);
+    return out;
+  }
+  function distributeInt(weights, total) {
+    const floats = normalizeToTotal(weights, total);
+    const floored = floats.map(Math.floor);
+    let rem = total - floored.reduce((a, b) => a + b, 0);
+    const order = floats.map((f, i) => [f - Math.floor(f), i]).sort((a, b) => b[0] - a[0]);
+    for (let k = 0; k < rem; k++) floored[order[k][1]]++;
+    return floored;
+  }
+  function distributeCents(weights, total) {
+    const cents = Math.round(total * 100);
+    const asCents = distributeInt(weights, cents);
+    return asCents.map(c => c / 100);
+  }
+
+  const dayTokW = genWeights(activeIdx.length);
+  const dayReqW = genWeights(activeIdx.length);
+  const dayCostW = genWeights(activeIdx.length);
+  const dayTokens = distributeInt(dayTokW, TOTAL_TOKENS);
+  const dayRequests = distributeInt(dayReqW, TOTAL_REQUESTS);
+  const dayCost = distributeCents(dayCostW, TOTAL_COST);
+
+  // bucket lookup by index across all 52 slots (gap days = 0)
+  const bucketTokens = new Array(DAYS).fill(0);
+  const bucketRequests = new Array(DAYS).fill(0);
+  const bucketCost = new Array(DAYS).fill(0);
+  activeIdx.forEach((idx, k) => { bucketTokens[idx] = dayTokens[k]; bucketRequests[idx] = dayRequests[k]; bucketCost[idx] = dayCost[k]; });
+
+  function splitByShare(total, dims, jitter) {
+    const weights = dims.map(d => d.w * (1 + (rng() - 0.5) * jitter));
+    return distributeInt(weights, Math.round(total));
+  }
+
+  function fmtDate(d, opts) { return d.toLocaleDateString("en-US", opts || { month: "short", day: "numeric" }); }
+
+  // ---------- hourly drilldown data (Aug 9, 2026) ----------
+  const DRILL_DATE_IDX = dayDates.findIndex(d => d.toISOString().slice(0, 10) === "2026-08-09");
+  const HOUR_SHAPE = [0.1,0.1,0.05,0.05,0.05,0.1,0.3,0.9,1.6,2.2,2.4,2.0,1.2,1.8,2.3,2.4,2.1,1.7,1.1,0.9,1.3,1.0,0.5,0.2];
+  function hourlyBuckets(dayIndex, measureTotal) {
+    const w = HOUR_SHAPE.map(v => v * (0.85 + rng() * 0.3));
+    return measureTotal >= 100 ? distributeInt(w, Math.round(measureTotal)) : normalizeToTotal(w, measureTotal);
+  }
+
+  // ---------- state ----------
+  const state = { measure: "tokens", stackBy: "model", granularity: "day", range: "all", drillIdx: null, kindOn: { input: true, output: true, cache_w5: true, cache_w1h: true, cache_read: true }, entityFilter: null };
+
+  function measureTotal(idx) { return state.measure === "tokens" ? bucketTokens[idx] : state.measure === "requests" ? bucketRequests[idx] : bucketCost[idx]; }
+
+  function kindIncludedFraction() {
+    const onW = KINDS.filter(k => state.kindOn[k.key]).reduce((a, k) => a + k.w, 0);
+    const allW = KINDS.reduce((a, k) => a + k.w, 0);
+    return onW / allW;
+  }
+
+  const WEEK_SIZE = 7, WEEK_COUNT = Math.ceil(DAYS / WEEK_SIZE);
+  function isWeekView() { return state.granularity === "week" && state.drillIdx === null; }
+  function weekLabel(w) { return "Wk of " + fmtDate(dayDates[Math.min(w * WEEK_SIZE, DAYS - 1)]); }
+
+  function buildBuckets() {
+    if (state.drillIdx !== null) {
+      const dayTotal = measureTotal(state.drillIdx);
+      const hb = hourlyBuckets(state.drillIdx, dayTotal);
+      const frac = state.measure === "tokens" ? kindIncludedFraction() : 1;
+      return hb.map(v => v * frac);
+    }
+    if (isWeekView()) {
+      const frac = state.measure === "tokens" ? kindIncludedFraction() : 1;
+      const out = [];
+      for (let w = 0; w < WEEK_COUNT; w++) {
+        let sum = 0;
+        for (let i = w * WEEK_SIZE; i < Math.min((w + 1) * WEEK_SIZE, DAYS); i++) sum += measureTotal(i);
+        out.push(sum * frac);
+      }
+      return out;
+    }
+    const frac = state.measure === "tokens" ? kindIncludedFraction() : 1;
+    return Array.from({ length: DAYS }, (_, i) => measureTotal(i) * frac);
+  }
+
+  function currentDims() {
+    if (state.stackBy === "model") return MODELS;
+    if (state.stackBy === "tokenkind") return KINDS.filter(k => state.kindOn[k.key]);
+    if (state.stackBy === "project") return PROJECTS;
+    return [
+      { name: "Claude Browser (MCP)", color: "var(--series-1)", w: 0.34 },
+      { name: "code-search skill", color: "var(--series-2)", w: 0.22 },
+      { name: "Linear MCP", color: "var(--series-3)", w: 0.15 },
+      { name: "Playwright MCP", color: "var(--series-4)", w: 0.11 },
+      { name: "+ other skills/servers", color: "var(--series-recessive)", w: 0.18, isOther: true },
+    ];
+  }
+  function dimColor(d, i) { return d.isOther ? "var(--series-recessive)" : (d.color || `var(--series-${(i % 6) + 1})`); }
+
+  function fmtVal(v) {
+    if (state.measure === "cost") return "$" + v.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    if (state.measure === "requests") return Math.round(v).toLocaleString();
+    return fmtTokens(v);
+  }
+  function fmtTokens(v) {
+    if (v >= 1e9) return (v / 1e9).toFixed(2) + "B";
+    if (v >= 1e6) return (v / 1e6).toFixed(1) + "M";
+    if (v >= 1e3) return (v / 1e3).toFixed(1) + "K";
+    return Math.round(v).toLocaleString();
+  }
+
+  function niceMax(v) {
+    if (v <= 0) return 1;
+    const p = Math.pow(10, Math.floor(Math.log10(v)));
+    const n = v / p;
+    const step = n <= 1 ? 1 : n <= 2 ? 2 : n <= 5 ? 5 : 10;
+    return step * p;
+  }
+
+  function entityShare() {
+    if (!state.entityFilter) return 1;
+    const list = state.entityFilter.kind === "model" ? MODELS : state.entityFilter.kind === "project" ? PROJECTS : BRANCHES;
+    const total = list.reduce((a, d) => a + d.w, 0);
+    const match = list.find(d => d.name === state.entityFilter.name);
+    return match ? match.w / total : 0;
+  }
+
+  function render() {
+    const rawBuckets = buildBuckets();
+    const filtered = state.entityFilter !== null;
+    const share = entityShare();
+    const buckets = filtered ? rawBuckets.map(v => v * share) : rawBuckets;
+    const dims = filtered ? [{ name: state.entityFilter.name, color: "var(--accent)", w: 1 }] : currentDims();
+    const totalDimW = dims.reduce((a, d) => a + d.w, 0);
+    const max = niceMax(Math.max(...buckets, 1) * 1.15);
+
+    // y-axis
+    const yAxis = document.getElementById("yAxis");
+    yAxis.innerHTML = "";
+    [1, 0.75, 0.5, 0.25, 0].forEach(f => { const s = document.createElement("span"); s.textContent = fmtVal(max * f); yAxis.appendChild(s); });
+    const gridlines = document.getElementById("gridlines");
+    gridlines.innerHTML = "";
+    [0.25, 0.5, 0.75, 1].forEach(f => { const gl = document.createElement("div"); gl.className = "gl"; gl.style.bottom = (f * 100) + "%"; gridlines.appendChild(gl); });
+
+    // bars
+    const barsRow = document.getElementById("barsRow");
+    barsRow.innerHTML = "";
+    const isDrill = state.drillIdx !== null;
+    const isWeek = isWeekView();
+    const drillable = !isDrill && !isWeek;
+    buckets.forEach((total, i) => {
+      const col = document.createElement("div");
+      col.className = "bar-col" + (drillable ? " clickable" : "");
+      const stack = document.createElement("div");
+      stack.className = "stack";
+      stack.style.height = max > 0 ? (Math.min(total, max) / max * 100) + "%" : "0%";
+      dims.forEach((d, di) => {
+        const seg = document.createElement("div");
+        seg.className = "bar-seg";
+        const segShare = d.w / totalDimW;
+        seg.style.height = (segShare * 100) + "%";
+        seg.style.background = dimColor(d, di);
+        seg.style.borderRadius = di === dims.length - 1 ? "3px 3px 0 0" : "0";
+        stack.appendChild(seg);
+      });
+      col.appendChild(stack);
+      col.addEventListener("pointerenter", (e) => showTooltip(e, i, total, dims, totalDimW));
+      col.addEventListener("pointermove", (e) => positionTooltip(e));
+      col.addEventListener("pointerleave", hideTooltip);
+      if (drillable) {
+        col.addEventListener("click", () => drillInto(i));
+        col.tabIndex = 0;
+        col.addEventListener("keydown", (e) => { if (e.key === "Enter") drillInto(i); });
+      }
+      barsRow.appendChild(col);
+    });
+
+    // x-axis
+    const xAxis = document.getElementById("xAxis");
+    xAxis.innerHTML = "";
+    const n = buckets.length;
+    for (let i = 0; i < n; i++) {
+      const s = document.createElement("span");
+      let label = "", show;
+      if (isDrill) { show = i % 3 === 0; label = i.toString().padStart(2, "0") + ":00"; }
+      else if (isWeek) { show = true; label = weekLabel(i); }
+      else { show = i % 7 === 0 || i === n - 1; label = fmtDate(dayDates[i]); }
+      s.textContent = show ? label : "";
+      xAxis.appendChild(s);
+    }
+
+    // legend
+    const legend = document.getElementById("legend");
+    legend.innerHTML = "";
+    dims.forEach((d, di) => {
+      const item = document.createElement("div");
+      item.className = "legend-item";
+      item.innerHTML = `<span class="legend-key" style="background:${dimColor(d, di)}"></span><span>${d.name}</span>`;
+      legend.appendChild(item);
+    });
+
+    // breadcrumb
+    const bc = document.getElementById("breadcrumb");
+    if (isDrill) {
+      bc.innerHTML = `<button class="crumb-btn" id="bcAll">All time</button> <span>›</span> <span>${fmtDate(dayDates[state.drillIdx], { month: "short", day: "numeric", year: "numeric" })}</span> <button class="x" id="bcClose" aria-label="Clear drilldown"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>`;
+      const clearDrill = () => { state.drillIdx = null; syncGranSeg("day"); render(); };
+      document.getElementById("bcAll").addEventListener("click", clearDrill);
+      document.getElementById("bcClose").addEventListener("click", clearDrill);
+    } else {
+      bc.textContent = "All time";
+    }
+
+    // token kind row
+    const kindRow = document.getElementById("kindRow");
+    const kindHint = document.getElementById("kindHint");
+    kindRow.innerHTML = "";
+    if (state.measure === "tokens") {
+      kindRow.style.display = "flex";
+      kindHint.style.display = "block";
+      const kindTotal = KINDS.reduce((a, k) => a + k.w, 0);
+      KINDS.forEach(k => {
+        const pill = document.createElement("button");
+        pill.className = "kind-pill" + (state.kindOn[k.key] ? "" : " off");
+        pill.innerHTML = `<span class="sw" style="background:${k.color}"></span>${k.name} <span class="pct">${(k.w / kindTotal * 100).toFixed(k.key === "cache_read" ? 0 : 1)}%</span>`;
+        pill.addEventListener("click", () => { state.kindOn[k.key] = !state.kindOn[k.key]; render(); });
+        kindRow.appendChild(pill);
+      });
+      const allOn = Object.values(state.kindOn).every(Boolean);
+      kindHint.textContent = allOn
+        ? "All token kinds shown — cache read dominates at 95% of volume by design; toggle it off to see the rest at readable scale."
+        : "Filtered — chart rescales to the remaining kinds so smaller bands stay legible.";
+    } else {
+      kindRow.style.display = "none";
+      kindHint.style.display = "none";
+    }
+
+    renderBreakdownTables();
+  }
+
+  function showTooltip(e, i, total, dims, totalDimW) {
+    const tt = document.getElementById("chartTooltip");
+    const isDrill = state.drillIdx !== null;
+    const title = isDrill
+      ? (i.toString().padStart(2, "0") + ":00 – " + ((i + 1) % 24).toString().padStart(2, "0") + ":00")
+      : isWeekView() ? weekLabel(i) : fmtDate(dayDates[i], { weekday: "short", month: "short", day: "numeric" });
+    let rows = "";
+    dims.forEach((d, di) => {
+      const v = total * (d.w / totalDimW);
+      rows += `<div class="tt-row"><span class="tt-key" style="background:${dimColor(d, di)}"></span><span class="tt-name">${d.name}</span><span class="tt-val">${fmtVal(v)}</span></div>`;
+    });
+    tt.innerHTML = `<div class="tt-title">${title}</div>${rows}<div class="tt-total"><span>Total</span><span>${fmtVal(total)}</span></div>`;
+    tt.classList.add("show");
+    positionTooltip(e);
+  }
+  function positionTooltip(e) {
+    const tt = document.getElementById("chartTooltip");
+    const area = document.querySelector(".chart-area");
+    const rect = area.getBoundingClientRect();
+    let x = e.clientX - rect.left + 14, y = e.clientY - rect.top - 10;
+    if (x + 190 > rect.width) x = e.clientX - rect.left - 190;
+    tt.style.left = x + "px"; tt.style.top = y + "px";
+  }
+  function hideTooltip() { document.getElementById("chartTooltip").classList.remove("show"); }
+
+  function syncGranSeg(gran) {
+    state.granularity = gran;
+    document.querySelectorAll("#granSeg .seg-btn").forEach(b => b.classList.toggle("active", b.dataset.gran === gran));
+  }
+  function drillInto(i) {
+    if (GAP_INDEXES.has(i) || measureTotal(i) === 0) return;
+    state.drillIdx = i; syncGranSeg("hour"); render();
+  }
+
+  function renderBreakdownTables() {
+    fillTable("tblModelBody", MODELS.map(m => ({ name: m.name, color: m.color, req: TOTAL_REQUESTS * m.w, tok: TOTAL_TOKENS * m.w, cost: TOTAL_COST * m.w })), "model");
+    fillTable("tblProjectBody", PROJECTS.map(p => ({ name: p.name, req: TOTAL_REQUESTS * p.w, tok: TOTAL_TOKENS * p.w, cost: TOTAL_COST * p.w, isOther: p.isOther })), "project");
+    fillTable("tblBranchBody", BRANCHES.map(b => ({ name: b.name, req: TOTAL_REQUESTS * b.w, tok: TOTAL_TOKENS * b.w, cost: TOTAL_COST * b.w, isOther: b.isOther })), "branch");
+  }
+  function fillTable(bodyId, rows, kind) {
+    const tbody = document.getElementById(bodyId);
+    tbody.innerHTML = "";
+    const maxTok = Math.max(...rows.map(r => r.tok));
+    rows.forEach(r => {
+      const tr = document.createElement("tr");
+      if (!r.isOther) { tr.className = "table-row-link"; tr.tabIndex = 0; }
+      const share = r.tok / TOTAL_TOKENS * 100;
+      tr.innerHTML = `
+        <td data-col="name" data-value="${r.name}"><div class="name-cell">${r.color ? `<span class="dot" style="background:${r.color}"></span>` : ""}<span>${r.name}</span></div></td>
+        <td class="num tnum" data-col="req" data-value="${r.req}">${Math.round(r.req).toLocaleString()}</td>
+        <td class="num tnum" data-col="tok" data-value="${r.tok}">${fmtTokens(r.tok)}</td>
+        <td class="num tnum" data-col="cost" data-value="${r.cost}">$${r.cost.toFixed(2)}</td>`;
+      if (!r.isOther) {
+        tr.addEventListener("click", () => applyEntityFilter(r.name, kind));
+      }
+      tbody.appendChild(tr);
+    });
+  }
+
+  function applyEntityFilter(name, kind) {
+    const isSame = state.entityFilter && state.entityFilter.name === name && state.entityFilter.kind === kind;
+    state.entityFilter = isSame ? null : { name, kind };
+    const chipRow = document.getElementById("chipRow");
+    chipRow.innerHTML = "";
+    if (state.entityFilter) {
+      const chip = document.createElement("div");
+      chip.className = "chip";
+      chip.innerHTML = `<span>${kind[0].toUpperCase() + kind.slice(1)}: ${name}</span><button aria-label="Remove filter">×</button>`;
+      chip.querySelector("button").addEventListener("click", (e) => { e.stopPropagation(); state.entityFilter = null; chipRow.innerHTML = ""; render(); });
+      chipRow.appendChild(chip);
+    }
+    render();
+  }
+
+  // ---------- controls ----------
+  document.getElementById("measureSeg").addEventListener("click", (e) => {
+    const btn = e.target.closest("[data-measure]"); if (!btn) return;
+    document.querySelectorAll("#measureSeg .seg-btn").forEach(b => b.classList.remove("active"));
+    btn.classList.add("active");
+    state.measure = btn.dataset.measure;
+    render();
+  });
+  function lastActiveDayIdx() { for (let i = DAYS - 1; i >= 0; i--) if (!GAP_INDEXES.has(i)) return i; return DAYS - 1; }
+  document.getElementById("granSeg").addEventListener("click", (e) => {
+    const btn = e.target.closest("[data-gran]"); if (!btn) return;
+    document.querySelectorAll("#granSeg .seg-btn").forEach(b => b.classList.remove("active"));
+    btn.classList.add("active");
+    state.granularity = btn.dataset.gran;
+    if (state.granularity === "hour" && state.drillIdx === null) state.drillIdx = lastActiveDayIdx();
+    if (state.granularity !== "hour" && state.granularity !== "day") state.drillIdx = null;
+    if (state.granularity === "day") state.drillIdx = null;
+    render();
+  });
+  document.getElementById("dateRangeSeg").addEventListener("click", (e) => {
+    const btn = e.target.closest("[data-range]"); if (!btn) return;
+    document.querySelectorAll("#dateRangeSeg .seg-btn").forEach(b => b.classList.remove("active"));
+    btn.classList.add("active");
+    document.getElementById("dateRangeLabel").textContent = { "7d": "Last 7 days", "30d": "Last 30 days", "90d": "Last 90 days", "all": "All time", "custom": "Custom range" }[btn.dataset.range];
+  });
+  const STACK_LABELS = { model: "Model", tokenkind: "Token kind", project: "Project", skill: "Skill / MCP" };
+  document.getElementById("stackByField").addEventListener("click", () => {
+    const order = ["model", "tokenkind", "project", "skill"];
+    state.stackBy = order[(order.indexOf(state.stackBy) + 1) % order.length];
+    document.getElementById("stackByLabel").textContent = STACK_LABELS[state.stackBy];
+    render();
+  });
+
+  // ---------- preview state switcher ----------
+  const scanLogLines = [
+    "Reading ~/.claude/projects/arlo-ai-analyzer …",
+    "Reading ~/.claude/projects/api-gateway …",
+    "Reading ~/.claude/projects/design-system …",
+    "Parsed 41 sessions, 3,204 requests …",
+    "Reading ~/.claude/projects/infra-terraform …",
+    "Pricing 6 models against rate table …",
+    "Reading ~/.claude/projects/mobile-app …",
+    "Indexing context high-water marks …",
+  ];
+  let scanTimer = null;
+  function runScanAnimation() {
+    let pct = 0, filesDone = 0, mbDone = 0, logIdx = 0;
+    const fill = document.getElementById("scanProgressFill");
+    const meta = document.getElementById("scanMeta");
+    const log = document.getElementById("scanLog");
+    const status = document.getElementById("scanStatusLine");
+    log.innerHTML = "";
+    clearInterval(scanTimer);
+    scanTimer = setInterval(() => {
+      pct = Math.min(100, pct + 2.6);
+      filesDone = Math.round((pct / 100) * 275);
+      mbDone = Math.round((pct / 100) * 234);
+      fill.style.width = pct + "%";
+      meta.textContent = `${mbDone} MB / 234 MB · ${filesDone} / 275 files`;
+      if (pct / (100 / scanLogLines.length) >= logIdx + 1 && logIdx < scanLogLines.length) {
+        const line = document.createElement("div");
+        line.textContent = scanLogLines[logIdx]; log.appendChild(line);
+        log.scrollTop = log.scrollHeight; logIdx++;
+      }
+      if (pct >= 100) {
+        clearInterval(scanTimer);
+        status.textContent = "Scan complete. Loading dashboard…";
+        setTimeout(() => { setPreview("live"); }, 700);
+      }
+    }, 140);
+  }
+  function setPreview(name) {
+    document.querySelectorAll("[data-preview]").forEach(b => b.classList.toggle("active", b.dataset.preview === name));
+    document.querySelectorAll("[data-view]").forEach(v => v.hidden = v.dataset.view !== name);
+    if (name === "scanning") runScanAnimation(); else clearInterval(scanTimer);
+  }
+  document.querySelectorAll("[data-preview]").forEach(b => b.addEventListener("click", () => setPreview(b.dataset.preview)));
+  document.getElementById("empty-rescan-btn") && document.getElementById("empty-rescan-btn").addEventListener("click", () => setPreview("scanning"));
+
+  render();
+})();
+</script>
+</body>
+</html>

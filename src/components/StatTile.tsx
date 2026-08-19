@@ -1,8 +1,1 @@
-export function StatTile({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="stat-tile">
-      <div className="stat-value">{value}</div>
-      <div className="stat-label">{label}</div>
-    </div>
-  );
-}
+export { StatTile } from "../primitives/StatTile";

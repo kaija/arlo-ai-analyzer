@@ -1,0 +1,75 @@
+{
+  "nav": {
+    "dashboard": "ダッシュボード",
+    "sessions": "セッション",
+    "insights": "インサイト",
+    "settings": "設定",
+    "expandSidebar": "サイドバーを展開",
+    "collapseSidebar": "サイドバーを折りたたむ"
+  },
+  "page": {
+    "dashboard": "ダッシュボード",
+    "sessions": "セッション",
+    "sessionDetail": "セッション詳細",
+    "insights": "インサイト",
+    "settings": "設定"
+  },
+  "topbar": {
+    "toggleTheme": "テーマを切り替える"
+  },
+  "settings": {
+    "language": {
+      "title": "言語",
+      "subtitle": "表示言語を選択してください。",
+      "controlLabel": "言語を選択"
+    },
+    "planBudget": {
+      "title": "プランと予算",
+      "subtitle": "API相当価値の計算およびインサイトページの消費率予測に使用します。",
+      "monthlyPlanPrice": "月額プラン料金",
+      "monthlyPlanPriceHint": "実際の支払い金額で、「価値とプラン」の比較に使用されます。",
+      "monthlyBudget": "月間予算",
+      "monthlyBudgetHint": "インサイトページの予算バーと予測警告を制御します。",
+      "contextAlertThreshold": "コンテキスト警告しきい値",
+      "contextAlertThresholdHint": "セッションのコンテキスト最高水準がモデルウィンドウに占める割合がこの値を超えたときに通知します。",
+      "invalidNumber": "0以上の数値を入力してください。",
+      "perMonth": "/ 月"
+    },
+    "notifications": {
+      "title": "通知",
+      "contextAlerts": "コンテキスト警告",
+      "contextAlertsHint": "セッションが上記しきい値を超えた際に、OSの通知とアプリ内バナーを表示します。",
+      "dailyDigest": "デイリーダイジェスト",
+      "dailyDigestHint": "作業中はプッシュなし、1日1回の静かなサマリーです。",
+      "budgetWarnings": "予算警告",
+      "budgetWarningsHint": "月間予算の80%および100%に達したときに通知します。"
+    },
+    "logsDirectory": {
+      "title": "ログディレクトリ",
+      "subtitle": "ArloはこのパスからClaude Codeの記録を読み取ります。データはお使いのマシンから外部に送信されません。",
+      "currentPath": "現在のログディレクトリパス",
+      "change": "変更\u2026",
+      "rescan": "再スキャン",
+      "scanning": "スキャン中\u2026",
+      "scanFailed": "スキャン失敗"
+    },
+    "pricing": {
+      "title": "料金",
+      "subtitle": "読み取り専用。レートは現在の料金ではなく、各リクエストが発生した時点の料金に基づきます。",
+      "reprice": "再計算",
+      "repricing": "再計算中\u2026",
+      "tableLabel": "モデル料金レート",
+      "colModel": "モデル",
+      "colInput": "入力 /Mtok",
+      "colOutput": "出力 /Mtok",
+      "colCacheWrite5m": "キャッシュ書き込み5分",
+      "colCacheWrite1h": "キャッシュ書き込み1時間",
+      "colCacheRead": "キャッシュ読み取り",
+      "colEffective": "有効日",
+      "footerNote": "レートはAnthropicが公開する100万トークンあたりの単価（$/Mtok）です。キャッシュ書き込み1時間はキャッシュ書き込み5分と同じレートで課金されます。実際のコストは異なる場合があります。最新のレートはanthropiccom/pricingでご確認ください。",
+      "unpricedWarning": "{models} の料金情報が見つかりません。コスト見積もりが不正確になる可能性があります。",
+      "introductory": "導入価格",
+      "standard": "標準"
+    }
+  }
+}

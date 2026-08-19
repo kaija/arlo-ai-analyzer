@@ -1,0 +1,262 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Arlo — Settings</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="shared/tokens.css" />
+<style>
+  .settings-body { padding: 24px; max-width: 880px; }
+  .settings-section { margin-bottom: 20px; }
+  .settings-section .card-head { display: flex; align-items: center; justify-content: space-between; }
+  .settings-section .card-head p { font-size: 12px; color: var(--muted); margin-top: 2px; }
+  .settings-form { padding: 20px 24px; display: flex; flex-direction: column; gap: 18px; }
+  .form-row { display: flex; align-items: center; justify-content: space-between; gap: 20px; flex-wrap: wrap; }
+  .form-row .label-col { max-width: 380px; }
+  .form-row .label-col .lbl { font-size: 13px; font-weight: 600; }
+  .form-row .label-col .hint { font-size: 11.5px; color: var(--muted); margin-top: 2px; }
+  .form-row .control-col { flex: 0 0 auto; display: flex; align-items: center; gap: 10px; }
+  .prefix-input { display: flex; align-items: center; }
+  .prefix-input .prefix { padding: 0 8px 0 10px; color: var(--muted); font-size: 12.5px; }
+  .prefix-input input { width: 100px; height: 32px; border: none; background: transparent; outline: none; font-size: 12.5px; font-variant-numeric: tabular-nums; text-align: right; padding-right: 10px; }
+  .field-wrap { border: 1px solid var(--border-strong); border-radius: 8px; background: var(--surface); }
+  .field-wrap:focus-within { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-ring); }
+  .field-wrap.error { border-color: var(--critical); }
+  .field-wrap.error:focus-within { box-shadow: 0 0 0 3px var(--critical-wash); }
+  .field-col { display: flex; flex-direction: column; }
+
+  .threshold-row .control-col { flex-direction: column; align-items: flex-end; gap: 6px; min-width: 220px; }
+  input[type="range"] { width: 200px; accent-color: var(--accent); }
+  .threshold-val { font-size: 12.5px; font-weight: 700; font-variant-numeric: tabular-nums; color: var(--accent); }
+
+  .switch { width: 34px; height: 20px; border-radius: 999px; background: var(--border-strong); position: relative; cursor: pointer; flex: 0 0 auto; transition: background 150ms ease; }
+  .switch::after { content: ""; position: absolute; top: 2px; left: 2px; width: 16px; height: 16px; border-radius: 999px; background: var(--surface); box-shadow: var(--shadow-sm); transition: transform 150ms ease; }
+  .switch.on { background: var(--accent); }
+  .switch.on::after { transform: translateX(14px); }
+
+  .path-row { display: flex; align-items: center; gap: 8px; padding: 20px 24px; }
+  .path-row .field { flex: 1 1 auto; }
+  .path-row .field-readonly { cursor: default; background: rgba(0,0,0,0.02); color: var(--muted); }
+  :root[data-theme="dark"] .path-row .field-readonly { background: rgba(255,255,255,0.03); }
+  .path-row .field span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+  .pricing-wrap { overflow-x: auto; }
+  #pricingTable { width: 100%; min-width: 720px; }
+  #pricingTable th, #pricingTable td { white-space: nowrap; }
+  .model-cell { display: flex; align-items: center; gap: 7px; }
+  .model-cell .dot { width: 8px; height: 8px; border-radius: 2px; flex: 0 0 auto; }
+  .rate-badge { font-size: 10px; font-weight: 700; padding: 0 6px; height: 16px; border-radius: 999px; display: inline-flex; align-items: center; margin-left: 6px; }
+  .rate-intro { background: var(--accent-wash); color: var(--accent); }
+  .rate-standard { background: rgba(0,0,0,0.05); color: var(--muted); }
+  :root[data-theme="dark"] .rate-standard { background: rgba(255,255,255,0.07); }
+  .sonnet-group { background: var(--accent-wash); }
+  .pricing-note { font-size: 11.5px; color: var(--muted); padding: 12px 24px; border-top: 1px solid var(--border); }
+  .unpriced-note { display: flex; align-items: center; gap: 10px; padding: 12px 24px; border-top: 1px solid var(--warning-border); background: var(--warning-wash); font-size: 12px; }
+  .unpriced-note svg { width: 15px; height: 15px; color: var(--warning); flex: 0 0 auto; }
+
+  .actions-row { display: flex; justify-content: flex-end; gap: 8px; padding: 16px 24px; border-top: 1px solid var(--border); }
+</style>
+</head>
+<body>
+<div class="app-shell" data-od-id="settings-screen">
+  <aside class="sidebar" data-od-id="sidebar">
+    <div class="sidebar-brand">
+      <span class="mark"><svg viewBox="0 0 24 24" fill="none"><path d="M6 18 12 6l6 12" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+      <span>Arlo</span>
+    </div>
+    <nav class="sidebar-nav">
+      <a class="nav-item" href="dashboard.html" data-od-id="nav-dashboard">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="20" x2="4" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="20" y1="20" x2="20" y2="14"/></svg>
+        <span>Dashboard</span>
+      </a>
+      <a class="nav-item" href="sessions.html" data-od-id="nav-sessions">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/></svg>
+        <span>Sessions</span>
+      </a>
+      <a class="nav-item" href="insights.html" data-od-id="nav-insights">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+        <span>Insights</span>
+      </a>
+      <a class="nav-item active" href="settings.html" data-od-id="nav-settings">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="21" x2="4" y2="14"/><line x1="4" y1="10" x2="4" y2="3"/><line x1="12" y1="21" x2="12" y2="12"/><line x1="12" y1="8" x2="12" y2="3"/><line x1="20" y1="21" x2="20" y2="16"/><line x1="20" y1="12" x2="20" y2="3"/><line x1="1" y1="14" x2="7" y2="14"/><line x1="9" y1="8" x2="15" y2="8"/><line x1="17" y1="16" x2="23" y2="16"/></svg>
+        <span>Settings</span>
+      </a>
+    </nav>
+    <div class="sidebar-foot">
+      <button class="sidebar-collapse-btn" data-sidebar-toggle aria-label="Collapse sidebar">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+      </button>
+    </div>
+  </aside>
+
+  <div class="main-col">
+    <div class="titlebar-spacer"></div>
+    <div class="topbar">
+      <h1 class="topbar-title">Settings</h1>
+      <div class="topbar-actions">
+        <button class="theme-toggle" data-theme-toggle aria-label="Toggle theme">
+          <svg class="moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.8A9 9 0 1 1 11.2 3 7 7 0 0 0 21 12.8z"/></svg>
+          <svg class="sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><line x1="12" y1="2" x2="12" y2="4"/><line x1="12" y1="20" x2="12" y2="22"/><line x1="4.2" y1="4.2" x2="5.6" y2="5.6"/><line x1="18.4" y1="18.4" x2="19.8" y2="19.8"/><line x1="2" y1="12" x2="4" y2="12"/><line x1="20" y1="12" x2="22" y2="12"/><line x1="4.2" y1="19.8" x2="5.6" y2="18.4"/><line x1="18.4" y1="5.6" x2="19.8" y2="4.2"/></svg>
+        </button>
+      </div>
+    </div>
+
+    <main class="content-scroll">
+      <div class="settings-body">
+
+        <div class="card settings-section" data-od-id="settings-plan-budget">
+          <div class="card-head">
+            <div><h2 class="card-title">Plan &amp; budget</h2><p>Used to compute API-equivalent value and the burn-rate forecast on Insights.</p></div>
+          </div>
+          <div class="settings-form">
+            <div class="form-row">
+              <div class="label-col"><div class="lbl" id="lbl-plan-price">Monthly plan price</div><div class="hint">What you actually pay — used for the "value vs plan" comparison.</div></div>
+              <div class="control-col">
+                <div class="field-col">
+                  <div class="field-wrap prefix-input"><span class="prefix">$</span><input type="text" inputmode="decimal" value="200.00" aria-labelledby="lbl-plan-price" data-od-id="input-plan-price" /></div>
+                </div>
+                <span style="font-size:12px; color:var(--muted);">/ month</span>
+              </div>
+            </div>
+            <div class="form-row">
+              <div class="label-col"><div class="lbl" id="lbl-monthly-budget">Monthly budget</div><div class="hint">Drives the budget bar and forecast warning on Insights.</div></div>
+              <div class="control-col">
+                <div class="field-col">
+                  <div class="field-wrap prefix-input"><span class="prefix">$</span><input type="text" inputmode="decimal" value="1,000.00" aria-labelledby="lbl-monthly-budget" data-od-id="input-monthly-budget" /></div>
+                </div>
+                <span style="font-size:12px; color:var(--muted);">/ month</span>
+              </div>
+            </div>
+            <div class="form-row threshold-row">
+              <div class="label-col"><div class="lbl" id="lbl-threshold">Context-alert threshold</div><div class="hint">Notify when a session's context high-water mark crosses this share of its model's window.</div></div>
+              <div class="control-col">
+                <input type="range" id="thresholdSlider" min="50" max="95" step="5" value="75" aria-labelledby="lbl-threshold" aria-valuetext="75%" data-od-id="input-context-threshold" />
+                <span class="threshold-val" id="thresholdVal">75%</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="card settings-section" data-od-id="settings-notifications">
+          <div class="card-head"><div><h2 class="card-title">Notifications</h2></div></div>
+          <div class="settings-form">
+            <div class="form-row">
+              <div class="label-col"><div class="lbl" id="lbl-context-alerts">Context alerts</div><div class="hint">OS notification + in-app banner when a session crosses the threshold above.</div></div>
+              <div class="control-col"><div class="switch on" data-toggle role="switch" aria-checked="true" aria-labelledby="lbl-context-alerts" tabindex="0"></div></div>
+            </div>
+            <div class="form-row">
+              <div class="label-col"><div class="lbl" id="lbl-daily-digest">Daily digest</div><div class="hint">A quiet, once-a-day summary — no push during active work.</div></div>
+              <div class="control-col"><div class="switch" data-toggle role="switch" aria-checked="false" aria-labelledby="lbl-daily-digest" tabindex="0"></div></div>
+            </div>
+            <div class="form-row">
+              <div class="label-col"><div class="lbl" id="lbl-budget-warnings">Budget warnings</div><div class="hint">Notify at 80% and 100% of the monthly budget above.</div></div>
+              <div class="control-col"><div class="switch on" data-toggle role="switch" aria-checked="true" aria-labelledby="lbl-budget-warnings" tabindex="0"></div></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="card settings-section" data-od-id="settings-logs-directory">
+          <div class="card-head"><div><h2 class="card-title">Logs directory</h2><p>Arlo reads Claude Code transcripts from this path — nothing leaves your machine.</p></div></div>
+          <div class="path-row">
+            <div class="field field-readonly" style="flex:1 1 auto;" aria-label="Current logs directory, read only">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h11l5 5v11a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2z"/></svg>
+              <span class="mono">~/.claude/projects</span>
+            </div>
+            <button class="btn btn-secondary" data-od-id="btn-change-directory">Change…</button>
+            <button class="btn btn-primary" id="rescanBtn" data-od-id="btn-rescan">Re-scan</button>
+          </div>
+        </div>
+
+        <div class="card settings-section" id="pricing" data-od-id="settings-pricing-table">
+          <div class="card-head">
+            <div><h2 class="card-title">Pricing</h2><p>Read-only. Rates are keyed to when each request happened, not the rate in effect today.</p></div>
+            <button class="btn btn-secondary btn-small" id="repriceBtn" data-od-id="btn-reprice">Re-price</button>
+          </div>
+          <div class="pricing-wrap">
+            <table class="dtable" id="pricingTable">
+              <thead><tr>
+                <th>Model</th><th class="num">Input /Mtok</th><th class="num">Output /Mtok</th><th class="num">Cache write 5m</th><th class="num">Cache write 1h</th><th class="num">Cache read</th><th>Effective</th>
+              </tr></thead>
+              <tbody>
+                <tr><td><div class="model-cell"><span class="dot" style="background:var(--series-1)"></span>claude-opus-5</div></td><td class="num tnum">$15.00</td><td class="num tnum">$75.00</td><td class="num tnum">$18.75</td><td class="num tnum">$30.00</td><td class="num tnum">$1.50</td><td class="tnum">from Jan 1, 2026</td></tr>
+                <tr class="sonnet-group"><td><div class="model-cell"><span class="dot" style="background:var(--series-2)"></span>claude-sonnet-5 <span class="rate-badge rate-intro">Introductory</span></div></td><td class="num tnum">$2.50</td><td class="num tnum">$12.50</td><td class="num tnum">$3.13</td><td class="num tnum">$5.00</td><td class="num tnum">$0.25</td><td class="tnum">Jun 1 – Aug 31, 2026</td></tr>
+                <tr class="sonnet-group"><td><div class="model-cell"><span class="dot" style="background:var(--series-2)"></span>claude-sonnet-5 <span class="rate-badge rate-standard">Standard</span></div></td><td class="num tnum">$3.00</td><td class="num tnum">$15.00</td><td class="num tnum">$3.75</td><td class="num tnum">$6.00</td><td class="num tnum">$0.30</td><td class="tnum">from Sep 1, 2026</td></tr>
+                <tr><td><div class="model-cell"><span class="dot" style="background:var(--series-3)"></span>claude-fable-5</div></td><td class="num tnum">$1.00</td><td class="num tnum">$5.00</td><td class="num tnum">$1.25</td><td class="num tnum">$2.00</td><td class="num tnum">$0.10</td><td class="tnum">from Mar 15, 2026</td></tr>
+                <tr><td><div class="model-cell"><span class="dot" style="background:var(--series-4)"></span>claude-opus-4-8</div></td><td class="num tnum">$12.00</td><td class="num tnum">$60.00</td><td class="num tnum">$15.00</td><td class="num tnum">$24.00</td><td class="num tnum">$1.20</td><td class="tnum">from Nov 1, 2025</td></tr>
+                <tr><td><div class="model-cell"><span class="dot" style="background:var(--series-5)"></span>claude-haiku-4-5</div></td><td class="num tnum">$0.80</td><td class="num tnum">$4.00</td><td class="num tnum">$1.00</td><td class="num tnum">$1.60</td><td class="num tnum">$0.08</td><td class="tnum">from Sep 1, 2025</td></tr>
+                <tr><td><div class="model-cell"><span class="dot" style="background:var(--series-6)"></span>claude-sonnet-4-6</div></td><td class="num tnum">$3.00</td><td class="num tnum">$15.00</td><td class="num tnum">$3.75</td><td class="num tnum">$6.00</td><td class="num tnum">$0.30</td><td class="tnum">from Aug 1, 2025</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <div class="pricing-note">claude-sonnet-5 steps from its introductory rate to the standard rate automatically on Sep 1, 2026 — usage already logged keeps the rate active at request time; nothing is retroactively repriced unless you run Re-price.</div>
+          <div class="unpriced-note" data-od-id="unpriced-models-note">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.3 3.6 1.8 18a1.8 1.8 0 0 0 1.5 2.7h17.4a1.8 1.8 0 0 0 1.5-2.7L13.7 3.6a1.8 1.8 0 0 0-3.4 0z"/><line x1="12" y1="9" x2="12" y2="13.5"/></svg>
+            <span><strong>12 models unpriced</strong> — usage is still tracked (1,984 requests / 17.4M tokens), but excluded from cost totals until a rate is added.</span>
+          </div>
+          <div class="actions-row">
+            <button class="btn btn-secondary" id="repriceBtn2" data-od-id="btn-reprice-2">Re-price usage</button>
+          </div>
+        </div>
+
+      </div>
+    </main>
+  </div>
+</div>
+
+<script src="shared/app.js"></script>
+<script>
+(function () {
+  const slider = document.getElementById("thresholdSlider");
+  const val = document.getElementById("thresholdVal");
+  slider.addEventListener("input", () => { val.textContent = slider.value + "%"; slider.setAttribute("aria-valuetext", slider.value + "%"); });
+
+  document.querySelectorAll("[data-toggle]").forEach(sw => {
+    function set(on) { sw.classList.toggle("on", on); sw.setAttribute("aria-checked", String(on)); }
+    sw.addEventListener("click", () => set(!sw.classList.contains("on")));
+    sw.addEventListener("keydown", (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); set(!sw.classList.contains("on")); } });
+  });
+
+  // Inline validation for currency fields — demonstrates the error state, not just rest/focus.
+  function validateCurrency(input) {
+    const wrap = input.closest(".field-wrap");
+    const row = input.closest(".field-col");
+    let msg = row.querySelector(".field-error-msg");
+    const raw = input.value.replace(/,/g, "").trim();
+    const n = parseFloat(raw);
+    const invalid = raw === "" || isNaN(n) || n < 0;
+    wrap.classList.toggle("error", invalid);
+    input.setAttribute("aria-invalid", String(invalid));
+    const errorId = input.dataset.odId + "-error";
+    if (invalid) {
+      if (!msg) {
+        msg = document.createElement("div");
+        msg.className = "field-error-msg";
+        msg.id = errorId;
+        msg.setAttribute("role", "alert");
+        row.appendChild(msg);
+      }
+      msg.textContent = "Enter a number of 0 or more.";
+      input.setAttribute("aria-describedby", errorId);
+    } else {
+      if (msg) msg.remove();
+      input.removeAttribute("aria-describedby");
+    }
+  }
+  document.querySelectorAll('[data-od-id="input-plan-price"], [data-od-id="input-monthly-budget"]').forEach(input => {
+    input.addEventListener("blur", () => validateCurrency(input));
+  });
+
+  function flashBtn(btn, label) {
+    const original = btn.textContent;
+    btn.disabled = true; btn.textContent = label;
+    setTimeout(() => { btn.disabled = false; btn.textContent = original; }, 1100);
+  }
+  document.getElementById("rescanBtn").addEventListener("click", (e) => flashBtn(e.currentTarget, "Scanning…"));
+  document.getElementById("repriceBtn").addEventListener("click", (e) => flashBtn(e.currentTarget, "Re-pricing…"));
+  document.getElementById("repriceBtn2").addEventListener("click", (e) => flashBtn(e.currentTarget, "Re-pricing…"));
+})();
+</script>
+</body>
+</html>

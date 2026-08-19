@@ -1,0 +1,75 @@
+{
+  "nav": {
+    "dashboard": "Dashboard",
+    "sessions": "Sessions",
+    "insights": "Insights",
+    "settings": "Settings",
+    "expandSidebar": "Expand sidebar",
+    "collapseSidebar": "Collapse sidebar"
+  },
+  "page": {
+    "dashboard": "Dashboard",
+    "sessions": "Sessions",
+    "sessionDetail": "Session Detail",
+    "insights": "Insights",
+    "settings": "Settings"
+  },
+  "topbar": {
+    "toggleTheme": "Toggle theme"
+  },
+  "settings": {
+    "language": {
+      "title": "Language",
+      "subtitle": "Choose your display language.",
+      "controlLabel": "Select language"
+    },
+    "planBudget": {
+      "title": "Plan & budget",
+      "subtitle": "Used to compute API-equivalent value and the burn-rate forecast on Insights.",
+      "monthlyPlanPrice": "Monthly plan price",
+      "monthlyPlanPriceHint": "What you actually pay — used for the \"value vs plan\" comparison.",
+      "monthlyBudget": "Monthly budget",
+      "monthlyBudgetHint": "Drives the budget bar and forecast warning on Insights.",
+      "contextAlertThreshold": "Context-alert threshold",
+      "contextAlertThresholdHint": "Notify when a session's context high-water mark crosses this share of its model's window.",
+      "invalidNumber": "Enter a number of 0 or more.",
+      "perMonth": "/ month"
+    },
+    "notifications": {
+      "title": "Notifications",
+      "contextAlerts": "Context alerts",
+      "contextAlertsHint": "OS notification + in-app banner when a session crosses the threshold above.",
+      "dailyDigest": "Daily digest",
+      "dailyDigestHint": "A quiet, once-a-day summary — no push during active work.",
+      "budgetWarnings": "Budget warnings",
+      "budgetWarningsHint": "Notify at 80% and 100% of the monthly budget above."
+    },
+    "logsDirectory": {
+      "title": "Logs directory",
+      "subtitle": "Arlo reads Claude Code transcripts from this path — nothing leaves your machine.",
+      "currentPath": "Current logs directory path",
+      "change": "Change\u2026",
+      "rescan": "Re-scan",
+      "scanning": "Scanning\u2026",
+      "scanFailed": "Scan failed"
+    },
+    "pricing": {
+      "title": "Pricing",
+      "subtitle": "Read-only. Rates are keyed to when each request happened, not the rate in effect today.",
+      "reprice": "Re-price",
+      "repricing": "Re-pricing\u2026",
+      "tableLabel": "Model pricing rates",
+      "colModel": "Model",
+      "colInput": "Input /Mtok",
+      "colOutput": "Output /Mtok",
+      "colCacheWrite5m": "Cache write 5m",
+      "colCacheWrite1h": "Cache write 1h",
+      "colCacheRead": "Cache read",
+      "colEffective": "Effective",
+      "footerNote": "Rates are per million tokens ($/Mtok) as published by Anthropic. Cache write 1h is charged at the same rate as cache write 5m. Actual costs may vary; check anthropic.com/pricing for the latest rates.",
+      "unpricedWarning": "Pricing not found for {models}. Cost estimates may be inaccurate.",
+      "introductory": "Introductory",
+      "standard": "Standard"
+    }
+  }
+}

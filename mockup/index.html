@@ -1,0 +1,201 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Arlo — Design overview</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="shared/tokens.css" />
+<style>
+  body { overflow-y: auto; height: auto; }
+  .launcher-topbar {
+    position: sticky; top: 0; z-index: 20; height: 56px; display: flex; align-items: center; justify-content: space-between;
+    padding: 0 32px; border-bottom: 1px solid var(--border); background: var(--nav-glass);
+    -webkit-backdrop-filter: saturate(180%) blur(20px); backdrop-filter: saturate(180%) blur(20px);
+  }
+  .brand-row { display: flex; align-items: center; gap: 10px; font-weight: 700; font-size: 14px; }
+  .brand-row .mark { width: 24px; height: 24px; border-radius: 7px; background: var(--accent); display: flex; align-items: center; justify-content: center; }
+  .brand-row .mark svg { width: 14px; height: 14px; }
+
+  .hero { max-width: 800px; margin: 0 auto; padding: 72px 32px 40px; text-align: center; }
+  .hero .eyebrow { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); }
+  .hero h1 { font-size: 34px; font-weight: 700; margin-top: 12px; letter-spacing: -0.01em; }
+  .hero p { font-size: 14.5px; color: var(--muted); margin-top: 14px; line-height: 1.6; }
+
+  .wrap { max-width: 1120px; margin: 0 auto; padding: 0 32px 96px; }
+
+  .screen-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-top: 8px; }
+  @media (max-width: 900px) { .screen-grid { grid-template-columns: repeat(2, 1fr); } }
+  .screen-card { padding: 22px 20px; display: flex; flex-direction: column; gap: 10px; }
+  .screen-card .icon-tile { width: 34px; height: 34px; border-radius: 10px; background: var(--accent-wash); color: var(--accent); display: flex; align-items: center; justify-content: center; }
+  .screen-card .icon-tile svg { width: 17px; height: 17px; }
+  .screen-card h3 { font-size: 14px; font-weight: 600; }
+  .screen-card p { font-size: 12px; color: var(--muted); line-height: 1.5; flex: 1 1 auto; }
+  .screen-card .go { font-size: 12px; font-weight: 600; color: var(--accent); display: inline-flex; align-items: center; gap: 4px; }
+  .screen-card .go svg { width: 12px; height: 12px; }
+  .screen-card:hover { border-color: var(--accent-ring); box-shadow: var(--shadow-md); }
+  a.screen-card { display: flex; }
+
+  .section-title { font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted); margin: 56px 0 14px; }
+  .state-map { display: grid; grid-template-columns: repeat(2, 1fr); gap: 1px; background: var(--border); border: 1px solid var(--border); border-radius: 16px; overflow: hidden; }
+  @media (max-width: 760px) { .state-map { grid-template-columns: 1fr; } }
+  .state-row { background: var(--surface); padding: 14px 20px; display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+  .state-row .what { font-size: 12.5px; font-weight: 600; }
+  .state-row .where { font-size: 11.5px; color: var(--muted); margin-top: 2px; }
+  .state-row a { font-size: 11.5px; font-weight: 600; color: var(--accent); white-space: nowrap; }
+
+  /* ---------- OS notification mockups ---------- */
+  .notif-stage {
+    border-radius: 16px; padding: 56px 32px; display: flex; gap: 40px; flex-wrap: wrap; justify-content: center;
+    background:
+      radial-gradient(circle at 15% 20%, rgba(88,86,214,0.16) 0%, transparent 45%),
+      radial-gradient(circle at 85% 80%, rgba(88,86,214,0.12) 0%, transparent 50%),
+      var(--fg);
+  }
+  :root[data-theme="dark"] .notif-stage {
+    background:
+      radial-gradient(circle at 15% 20%, rgba(132,130,239,0.22) 0%, transparent 45%),
+      radial-gradient(circle at 85% 80%, rgba(132,130,239,0.14) 0%, transparent 50%),
+      #08080c;
+  }
+  .notif-col { display: flex; flex-direction: column; gap: 10px; align-items: center; }
+  .notif-col .os-lbl { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: rgba(255,255,255,0.5); }
+
+  .mac-notif {
+    width: 400px; border-radius: 18px; padding: 13px 14px; display: flex; gap: 11px; align-items: flex-start;
+    background: rgba(30,30,36,0.78); -webkit-backdrop-filter: blur(30px) saturate(180%); backdrop-filter: blur(30px) saturate(180%);
+    border: 1px solid rgba(255,255,255,0.08); box-shadow: 0 20px 50px rgba(0,0,0,0.45);
+  }
+  .mac-notif .app-icon { width: 34px; height: 34px; border-radius: 9px; background: var(--accent); display: flex; align-items: center; justify-content: center; flex: 0 0 auto; }
+  .mac-notif .app-icon svg { width: 18px; height: 18px; }
+  .mac-notif .body { flex: 1 1 auto; min-width: 0; color: #fff; }
+  .mac-notif .top-line { display: flex; align-items: center; justify-content: space-between; font-size: 12.5px; font-weight: 600; opacity: 0.95; }
+  .mac-notif .top-line .time { font-weight: 400; opacity: 0.55; font-size: 11px; }
+  .mac-notif .title { font-size: 13.5px; font-weight: 600; margin-top: 3px; line-height: 1.35; }
+  .mac-notif .msg { font-size: 12px; opacity: 0.82; margin-top: 3px; line-height: 1.45; }
+  .mac-notif .btn-row { display: flex; gap: 6px; margin-top: 10px; }
+  .mac-notif .pill-btn { font-size: 11px; font-weight: 600; padding: 5px 11px; border-radius: 999px; border: none; cursor: pointer; }
+  .mac-notif .pill-btn.primary { background: var(--accent); color: #fff; }
+  .mac-notif .pill-btn.ghost { background: rgba(255,255,255,0.14); color: #fff; }
+
+  .win-toast {
+    width: 380px; border-radius: 8px; padding: 14px 16px; background: rgba(38,38,42,0.9);
+    -webkit-backdrop-filter: blur(24px); backdrop-filter: blur(24px);
+    border: 1px solid rgba(255,255,255,0.1); box-shadow: 0 16px 40px rgba(0,0,0,0.4);
+    border-top: 3px solid var(--accent);
+  }
+  .win-toast .top-line { display: flex; align-items: center; gap: 8px; }
+  .win-toast .app-icon { width: 20px; height: 20px; border-radius: 5px; background: var(--accent); display: flex; align-items: center; justify-content: center; flex: 0 0 auto; }
+  .win-toast .app-icon svg { width: 12px; height: 12px; }
+  .win-toast .app-name { font-size: 11.5px; font-weight: 600; color: rgba(255,255,255,0.85); }
+  .win-toast .time { margin-left: auto; font-size: 10.5px; color: rgba(255,255,255,0.5); }
+  .win-toast .close { color: rgba(255,255,255,0.5); }
+  .win-toast .close svg { width: 12px; height: 12px; }
+  .win-toast .title { font-size: 13px; font-weight: 600; color: #fff; margin-top: 8px; line-height: 1.35; }
+  .win-toast .msg { font-size: 11.5px; color: rgba(255,255,255,0.75); margin-top: 3px; line-height: 1.45; }
+  .win-toast .btn-row { display: flex; gap: 8px; margin-top: 12px; }
+  .win-toast .win-btn { font-size: 11px; font-weight: 600; padding: 6px 12px; border-radius: 4px; border: 1px solid rgba(255,255,255,0.16); cursor: pointer; background: transparent; color: #fff; }
+  .win-toast .win-btn.primary { background: var(--accent); border-color: var(--accent); }
+
+  .notif-caption { max-width: 640px; margin: 18px auto 0; text-align: center; font-size: 12px; color: var(--muted); line-height: 1.6; }
+</style>
+</head>
+<body data-od-id="index-launcher">
+<div class="launcher-topbar">
+  <div class="brand-row">
+    <span class="mark"><svg viewBox="0 0 24 24" fill="none"><path d="M6 18 12 6l6 12" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+    <span>Arlo — design overview</span>
+  </div>
+  <button class="theme-toggle" data-theme-toggle aria-label="Toggle theme">
+    <svg class="moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.8A9 9 0 1 1 11.2 3 7 7 0 0 0 21 12.8z"/></svg>
+    <svg class="sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><line x1="12" y1="2" x2="12" y2="4"/><line x1="12" y1="20" x2="12" y2="22"/><line x1="4.2" y1="4.2" x2="5.6" y2="5.6"/><line x1="18.4" y1="18.4" x2="19.8" y2="19.8"/><line x1="2" y1="12" x2="4" y2="12"/><line x1="20" y1="12" x2="22" y2="12"/><line x1="4.2" y1="19.8" x2="5.6" y2="18.4"/><line x1="18.4" y1="5.6" x2="19.8" y2="4.2"/></svg>
+  </button>
+</div>
+
+<div class="hero">
+  <div class="eyebrow">Mac · Windows · Tauri 2 + React 19</div>
+  <h1>Arlo</h1>
+  <p>Where a developer's Claude Code tokens, requests, and money go — computed entirely offline from local JSONL transcripts. No network, no login, no onboarding. Built to be read like a profiler: dense, calm, and correct at a glance.</p>
+</div>
+
+<div class="wrap">
+  <div class="screen-grid" data-od-id="screen-launcher-grid">
+    <a class="card screen-card" href="dashboard.html" data-od-id="launcher-dashboard">
+      <span class="icon-tile"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="20" x2="4" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="20" y1="20" x2="20" y2="14"/></svg></span>
+      <h3>Dashboard</h3>
+      <p>Stat tiles, the stacked usage chart with hour drilldown, and the by-model / by-project / by-branch breakdown tables.</p>
+      <span class="go">Open <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="7" y1="17" x2="17" y2="7"/><polyline points="7 7 17 7 17 17"/></svg></span>
+    </a>
+    <a class="card screen-card" href="sessions.html" data-od-id="launcher-sessions">
+      <span class="icon-tile"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/></svg></span>
+      <h3>Sessions</h3>
+      <p>Dense, sortable session table with an at-a-glance context high-water meter. Click through to the per-request timeline.</p>
+      <span class="go">Open <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="7" y1="17" x2="17" y2="7"/><polyline points="7 7 17 7 17 17"/></svg></span>
+    </a>
+    <a class="card screen-card" href="insights.html" data-od-id="launcher-insights">
+      <span class="icon-tile"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg></span>
+      <h3>Insights</h3>
+      <p>Six findings — context health, cache efficiency, MCP/skill attribution, model right-sizing, budget forecast, tool failures.</p>
+      <span class="go">Open <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="7" y1="17" x2="17" y2="7"/><polyline points="7 7 17 7 17 17"/></svg></span>
+    </a>
+    <a class="card screen-card" href="settings.html" data-od-id="launcher-settings">
+      <span class="icon-tile"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="21" x2="4" y2="14"/><line x1="4" y1="10" x2="4" y2="3"/><line x1="12" y1="21" x2="12" y2="12"/><line x1="12" y1="8" x2="12" y2="3"/><line x1="20" y1="21" x2="20" y2="16"/><line x1="20" y1="12" x2="20" y2="3"/><line x1="1" y1="14" x2="7" y2="14"/><line x1="9" y1="8" x2="15" y2="8"/><line x1="17" y1="16" x2="23" y2="16"/></svg></span>
+      <h3>Settings</h3>
+      <p>Plan &amp; budget, context-alert threshold, notifications, and the effective-dated pricing table.</p>
+      <span class="go">Open <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="7" y1="17" x2="17" y2="7"/><polyline points="7 7 17 7 17 17"/></svg></span>
+    </a>
+  </div>
+
+  <div class="section-title">Where every required state lives</div>
+  <div class="state-map" data-od-id="state-reference-map">
+    <div class="state-row"><div><div class="what">First-run scan (loading)</div><div class="where">Dashboard → Preview state → "First-run scan"</div></div><a href="dashboard.html">View →</a></div>
+    <div class="state-row"><div><div class="what">Empty state — no logs found</div><div class="where">Dashboard → Preview state → "No logs found"</div></div><a href="dashboard.html">View →</a></div>
+    <div class="state-row"><div><div class="what">Unpriced-models warning strip</div><div class="where">Dashboard, live state — shown by default</div></div><a href="dashboard.html">View →</a></div>
+    <div class="state-row"><div><div class="what">Live context alert — in-app banner</div><div class="where">Dashboard, live state — shown by default</div></div><a href="dashboard.html">View →</a></div>
+    <div class="state-row"><div><div class="what">Stacked chart — cache read dominant</div><div class="where">Dashboard → token-kind pills, all on (default)</div></div><a href="dashboard.html">View →</a></div>
+    <div class="state-row"><div><div class="what">Stacked chart — cache read filtered out</div><div class="where">Dashboard → click the "Cache read" pill off</div></div><a href="dashboard.html">View →</a></div>
+  </div>
+
+  <div class="section-title">Live context alert — OS notification</div>
+  <div class="notif-stage" data-od-id="os-notification-mockup">
+    <div class="notif-col">
+      <span class="os-lbl">macOS</span>
+      <div class="mac-notif">
+        <span class="app-icon"><svg viewBox="0 0 24 24" fill="none"><path d="M6 18 12 6l6 12" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+        <div class="body">
+          <div class="top-line"><span>Arlo</span><span class="time">now</span></div>
+          <div class="title">arlo-ai-analyzer is at 78% context</div>
+          <div class="msg">784K / 1M tokens for Opus 5. Consider /compact, or hand off to a fresh session.</div>
+          <div class="btn-row">
+            <button class="pill-btn primary">View session</button>
+            <button class="pill-btn ghost">Dismiss</button>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="notif-col">
+      <span class="os-lbl">Windows 11</span>
+      <div class="win-toast">
+        <div class="top-line">
+          <span class="app-icon"><svg viewBox="0 0 24 24" fill="none"><path d="M6 18 12 6l6 12" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+          <span class="app-name">Arlo</span>
+          <span class="time">Now</span>
+          <span class="close"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></span>
+        </div>
+        <div class="title">arlo-ai-analyzer is at 78% context</div>
+        <div class="msg">784K / 1M tokens for Opus 5. Consider /compact, or hand off to a fresh session.</div>
+        <div class="btn-row">
+          <button class="win-btn primary">View session</button>
+          <button class="win-btn">Dismiss</button>
+        </div>
+      </div>
+    </div>
+  </div>
+  <p class="notif-caption">Same wording on both platforms and in the in-app banner — one action (view the session), one way to clear it. No siren red, no exclamation marks: this is a nudge from a tool that already trusts you to decide, not an error state.</p>
+
+</div>
+
+<script src="shared/app.js"></script>
+</body>
+</html>

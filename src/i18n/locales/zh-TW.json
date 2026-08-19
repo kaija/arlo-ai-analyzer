@@ -1,0 +1,75 @@
+{
+  "nav": {
+    "dashboard": "總覽",
+    "sessions": "工作階段",
+    "insights": "洞察",
+    "settings": "設定",
+    "expandSidebar": "展開側邊欄",
+    "collapseSidebar": "收合側邊欄"
+  },
+  "page": {
+    "dashboard": "總覽",
+    "sessions": "工作階段",
+    "sessionDetail": "階段詳情",
+    "insights": "洞察",
+    "settings": "設定"
+  },
+  "topbar": {
+    "toggleTheme": "切換主題"
+  },
+  "settings": {
+    "language": {
+      "title": "語言",
+      "subtitle": "選擇顯示語言。",
+      "controlLabel": "選擇語言"
+    },
+    "planBudget": {
+      "title": "方案與預算",
+      "subtitle": "用於計算 API 等效價值及洞察頁面上的消耗率預測。",
+      "monthlyPlanPrice": "每月方案費用",
+      "monthlyPlanPriceHint": "您實際支付的金額，用於「價值與方案」的比較。",
+      "monthlyBudget": "每月預算",
+      "monthlyBudgetHint": "驅動洞察頁面上的預算條和預測警告。",
+      "contextAlertThreshold": "情境警示閾值",
+      "contextAlertThresholdHint": "當工作階段的情境高水位超過其模型視窗的此比例時發出通知。",
+      "invalidNumber": "請輸入 0 或以上的數字。",
+      "perMonth": "/ 月"
+    },
+    "notifications": {
+      "title": "通知",
+      "contextAlerts": "情境警示",
+      "contextAlertsHint": "當工作階段超過上方閾值時，發送作業系統通知及應用程式內橫幅。",
+      "dailyDigest": "每日摘要",
+      "dailyDigestHint": "安靜的每日一次摘要，在工作期間不推送通知。",
+      "budgetWarnings": "預算警告",
+      "budgetWarningsHint": "在每月預算達到 80% 和 100% 時發出通知。"
+    },
+    "logsDirectory": {
+      "title": "日誌目錄",
+      "subtitle": "Arlo 從此路徑讀取 Claude Code 記錄，資料不會離開您的裝置。",
+      "currentPath": "目前日誌目錄路徑",
+      "change": "變更\u2026",
+      "rescan": "重新掃描",
+      "scanning": "掃描中\u2026",
+      "scanFailed": "掃描失敗"
+    },
+    "pricing": {
+      "title": "定價",
+      "subtitle": "唯讀。費率對應每次請求發生時的價格，而非當前生效的費率。",
+      "reprice": "重新計價",
+      "repricing": "重新計價中\u2026",
+      "tableLabel": "模型定價費率",
+      "colModel": "模型",
+      "colInput": "輸入 /Mtok",
+      "colOutput": "輸出 /Mtok",
+      "colCacheWrite5m": "快取寫入 5 分鐘",
+      "colCacheWrite1h": "快取寫入 1 小時",
+      "colCacheRead": "快取讀取",
+      "colEffective": "生效日期",
+      "footerNote": "費率為每百萬 Token（$/Mtok），依 Anthropic 公告為準。快取寫入 1 小時與快取寫入 5 分鐘費率相同。實際費用可能有所不同，請至 anthropic.com/pricing 查詢最新費率。",
+      "unpricedWarning": "找不到 {models} 的定價。費用估算可能不準確。",
+      "introductory": "導入期",
+      "standard": "標準"
+    }
+  }
+}

@@ -1,4 +1,5 @@
-use crate::model::{Session, ToolKind};
+use crate::model::{Session, SessionRequest, StopReason, ToolKind};
+use crate::pricing::estimate_request_cost;
 use crate::source::UsageSource;
 use anyhow::Result;
 use chrono::{DateTime, Utc};
@@ -60,6 +61,124 @@ impl UsageSource for ClaudeCodeSource {
         Ok(sessions)
     }
 }
+
+// ---------------------------------------------------------------------------
+// Public: per-request detail
+// ---------------------------------------------------------------------------
+
+/// Return every assistant turn in the given session as a `SessionRequest`.
+///
+/// We locate the `.jsonl` file by re-walking `~/.claude/projects/*/<session_id>.jsonl`.
+/// Returns an empty Vec (not an error) when the file cannot be found — the
+/// session may have been deleted or is from a different tool.
+pub fn get_session_requests(session_id: &str) -> Result<Vec<SessionRequest>> {
+    let Some(root) = default_root() else {
+        return Ok(vec![]);
+    };
+    let path = find_session_file(&root, session_id);
+    match path {
+        Some(p) => parse_requests_from_file(&p),
+        None => Ok(vec![]),
+    }
+}
+
+/// Walk `root/*/` looking for `<session_id>.jsonl`.
+fn find_session_file(root: &Path, session_id: &str) -> Option<PathBuf> {
+    let filename = format!("{session_id}.jsonl");
+    let Ok(entries) = fs::read_dir(root) else {
+        return None;
+    };
+    for entry in entries.flatten() {
+        if !entry.file_type().map(|t| t.is_dir()).unwrap_or(false) {
+            continue;
+        }
+        let candidate = entry.path().join(&filename);
+        if candidate.exists() {
+            return Some(candidate);
+        }
+    }
+    None
+}
+
+/// Parse a `.jsonl` file into one `SessionRequest` per assistant message.
+fn parse_requests_from_file(path: &Path) -> Result<Vec<SessionRequest>> {
+    let content = fs::read_to_string(path)?;
+    let mut requests: Vec<SessionRequest> = Vec::new();
+
+    for line in content.lines() {
+        let line = line.trim();
+        if line.is_empty() {
+            continue;
+        }
+        let Ok(value) = serde_json::from_str::<Value>(line) else {
+            continue;
+        };
+
+        if value.get("type").and_then(|v| v.as_str()) != Some("assistant") {
+            continue;
+        }
+
+        let Some(message) = value.get("message") else {
+            continue;
+        };
+
+        // Timestamp: prefer the top-level "timestamp" field; fall back to now.
+        let timestamp = value
+            .get("timestamp")
+            .and_then(|v| v.as_str())
+            .unwrap_or("")
+            .to_string();
+
+        let model = message
+            .get("model")
+            .and_then(|v| v.as_str())
+            .unwrap_or("unknown")
+            .to_string();
+
+        let stop_reason = message
+            .get("stop_reason")
+            .and_then(|v| v.as_str())
+            .map(StopReason::from_str_loose)
+            .unwrap_or(StopReason::Other);
+
+        let (input, output, cache_write, cache_read) =
+            if let Some(usage) = message.get("usage") {
+                (
+                    usage.get("input_tokens").and_then(|v| v.as_u64()).unwrap_or(0),
+                    usage.get("output_tokens").and_then(|v| v.as_u64()).unwrap_or(0),
+                    usage.get("cache_creation_input_tokens").and_then(|v| v.as_u64()).unwrap_or(0),
+                    usage.get("cache_read_input_tokens").and_then(|v| v.as_u64()).unwrap_or(0),
+                )
+            } else {
+                (0, 0, 0, 0)
+            };
+
+        // Context tokens = input + cache_read (mirrors what the frontend chart tracks)
+        let context_tokens = input + cache_read;
+
+        let cost_usd = estimate_request_cost(&model, input, output, cache_write, cache_read);
+
+        let index = requests.len() as u32;
+        requests.push(SessionRequest {
+            index,
+            timestamp,
+            model,
+            context_tokens,
+            input_tokens: input,
+            output_tokens: output,
+            cache_creation_tokens: cache_write,
+            cache_read_tokens: cache_read,
+            cost_usd,
+            stop_reason,
+        });
+    }
+
+    Ok(requests)
+}
+
+// ---------------------------------------------------------------------------
+// Session-level file parser (unchanged)
+// ---------------------------------------------------------------------------
 
 fn parse_session_file(path: &Path, fallback_project: &str) -> Result<Option<Session>> {
     let content = fs::read_to_string(path)?;

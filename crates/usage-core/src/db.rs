@@ -69,7 +69,7 @@ impl Db {
             let tool: String = row.get(0)?;
             let started_at: String = row.get(3)?;
             Ok(Session {
-                tool: ToolKind::from_str(&tool),
+                tool: tool.parse().unwrap_or(ToolKind::ClaudeCode),
                 session_id: row.get(1)?,
                 project: row.get(2)?,
                 started_at: chrono::DateTime::parse_from_rfc3339(&started_at)

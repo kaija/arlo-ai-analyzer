@@ -1,20 +1,23 @@
 import { HashRouter, Routes, Route } from "react-router-dom";
-import { Nav } from "./components/Nav";
-import Overview from "./pages/Overview";
-import ToolDetail from "./pages/ToolDetail";
-import ProjectDetail from "./pages/ProjectDetail";
+import { AppShell } from "./shell/AppShell";
+import DashboardPage from "./pages/Dashboard";
+import SessionsPage from "./pages/Sessions";
+import SessionDetailPage from "./pages/SessionDetail";
+import InsightsPage from "./pages/Insights";
+import SettingsPage from "./pages/Settings";
 
 export function AppRouter() {
   return (
     <HashRouter>
-      <Nav />
-      <main className="content">
-        <Routes>
-          <Route path="/" element={<Overview />} />
-          <Route path="/tool/:tool" element={<ToolDetail />} />
-          <Route path="/project/:project" element={<ProjectDetail />} />
-        </Routes>
-      </main>
+      <Routes>
+        <Route element={<AppShell />}>
+          <Route path="/" element={<DashboardPage />} />
+          <Route path="/sessions" element={<SessionsPage />} />
+          <Route path="/sessions/:id" element={<SessionDetailPage />} />
+          <Route path="/insights" element={<InsightsPage />} />
+          <Route path="/settings" element={<SettingsPage />} />
+        </Route>
+      </Routes>
     </HashRouter>
   );
 }
