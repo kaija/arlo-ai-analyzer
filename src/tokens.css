@@ -537,7 +537,9 @@ input.field-input { border: none; background: transparent; outline: none; width:
 .search-field input { border: none; background: transparent; outline: none; width: 100%; font-size: 12.5px; color: var(--fg); }
 
 /* Sessions table — active measure column highlight */
-.dtable th.emph, .dtable td.emph { background: var(--accent-wash); }
+.dtable td.emph { background: var(--accent-wash); }
+/* Sticky headers must be opaque, otherwise scrolling cells show through the accent wash. */
+.dtable th.emph { background: color-mix(in srgb, var(--surface) 86%, var(--accent)); }
 .dtable td, .dtable th { white-space: nowrap; }
 
 /* ---------- Switch toggle ---------- */

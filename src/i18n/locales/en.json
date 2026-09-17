@@ -67,7 +67,7 @@
       "colCacheRead": "Cache read",
       "colEffective": "Effective",
       "footerNote": "Rates are per million tokens ($/Mtok) as published by Anthropic. Cache write 1h is charged at the same rate as cache write 5m. Actual costs may vary; check anthropic.com/pricing for the latest rates.",
-      "unpricedWarning": "Pricing not found for {models}. Cost estimates may be inaccurate.",
+      "unpricedWarning": "Pricing not found for {{models}}. Cost estimates may be inaccurate.",
       "introductory": "Introductory",
       "standard": "Standard"
     },

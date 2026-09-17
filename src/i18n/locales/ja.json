@@ -67,7 +67,7 @@
       "colCacheRead": "キャッシュ読み取り",
       "colEffective": "有効日",
       "footerNote": "レートはAnthropicが公開する100万トークンあたりの単価（$/Mtok）です。キャッシュ書き込み1時間はキャッシュ書き込み5分と同じレートで課金されます。実際のコストは異なる場合があります。最新のレートはanthropiccom/pricingでご確認ください。",
-      "unpricedWarning": "{models} の料金情報が見つかりません。コスト見積もりが不正確になる可能性があります。",
+      "unpricedWarning": "{{models}} の料金情報が見つかりません。コスト見積もりが不正確になる可能性があります。",
       "introductory": "導入価格",
       "standard": "標準"
     },

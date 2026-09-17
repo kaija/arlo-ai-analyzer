@@ -67,7 +67,7 @@
       "colCacheRead": "快取讀取",
       "colEffective": "生效日期",
       "footerNote": "費率為每百萬 Token（$/Mtok），依 Anthropic 公告為準。快取寫入 1 小時與快取寫入 5 分鐘費率相同。實際費用可能有所不同，請至 anthropic.com/pricing 查詢最新費率。",
-      "unpricedWarning": "找不到 {models} 的定價。費用估算可能不準確。",
+      "unpricedWarning": "找不到 {{models}} 的定價。費用估算可能不準確。",
       "introductory": "導入期",
       "standard": "標準"
     },

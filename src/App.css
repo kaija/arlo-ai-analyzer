@@ -216,10 +216,10 @@ input[type="range"].settings-range { width: 200px; accent-color: var(--accent); 
   transition: filter 120ms ease;
 }
 .bar-seg:last-child { margin-bottom: 0; }
-/* Top segment — rounded top corners (.stack is column-reverse, so :first-child is the top) */
-.bar-seg:first-child { border-radius: 3px 3px 0 0; }
-/* Bottom segment — rounded bottom corners */
-.bar-seg:last-child  { border-radius: 0 0 3px 3px; }
+/* .stack is column-reverse: its first child is the bottom of the visible bar. */
+.bar-seg:first-child { border-radius: 0 0 3px 3px; }
+/* The final child is the visible top, so only its outside corners are rounded. */
+.bar-seg:last-child  { border-radius: 3px 3px 0 0; }
 /* Single segment — fully rounded */
 .bar-seg:first-child:last-child { border-radius: 3px; }
 
