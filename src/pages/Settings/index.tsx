@@ -1,13 +1,16 @@
+import { useEffect } from "react";
+import { useLocation } from "react-router-dom";
 import PlanBudgetCard from "./PlanBudgetCard";
 import { NotificationsCard } from "./NotificationsCard";
 import { LogsDirectoryCard } from "./LogsDirectoryCard";
 import { PricingCard } from "./PricingCard";
 import { LanguageCard } from "./LanguageCard";
+import { DatabaseCard } from "./DatabaseCard";
 
 // ---------------------------------------------------------------------------
 // SettingsPage
 //
-// Composes the four Settings cards in a responsive `.settings-grid` layout.
+// Composes the Settings cards in a responsive `.settings-grid` layout.
 // All cards read from and write to SettingsContext or SessionsContext
 // internally — no props are threaded through here.
 //
@@ -15,6 +18,16 @@ import { LanguageCard } from "./LanguageCard";
 // ---------------------------------------------------------------------------
 
 export default function SettingsPage() {
+  const location = useLocation();
+
+  useEffect(() => {
+    if (location.hash !== "#pricing") return;
+
+    const pricingCard = document.getElementById("pricing");
+    pricingCard?.scrollIntoView({ block: "start" });
+    pricingCard?.focus({ preventScroll: true });
+  }, [location.hash]);
+
   return (
     <div className="settings-page">
       {/* Screen-reader page heading — topbar title is visual-only (req 9.2) */}
@@ -25,6 +38,7 @@ export default function SettingsPage() {
         <LogsDirectoryCard />
         <PricingCard />
         <LanguageCard />
+        <DatabaseCard />
       </div>
     </div>
   );

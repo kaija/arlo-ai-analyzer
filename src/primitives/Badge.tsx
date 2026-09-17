@@ -6,13 +6,16 @@ interface BadgeProps {
 }
 
 interface EffortBadgeProps {
-  effort: Effort;
+  /** null on transcript records that predate the `effort` field. */
+  effort: Effort | null;
 }
 
 const EFFORT_LABELS: Record<Effort, string> = {
+  low: "Low",
   medium: "Medium",
   high: "High",
-  xhigh: "Max",
+  xhigh: "XHigh",
+  max: "Max",
 };
 
 export function Badge({ variant, children }: BadgeProps) {
@@ -20,6 +23,9 @@ export function Badge({ variant, children }: BadgeProps) {
 }
 
 export function EffortBadge({ effort }: EffortBadgeProps) {
+  if (effort === null) {
+    return <span className="effort-unknown">—</span>;
+  }
   return (
     <span className={`badge effort-${effort}`}>{EFFORT_LABELS[effort]}</span>
   );

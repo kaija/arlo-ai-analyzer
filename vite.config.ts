@@ -20,6 +20,7 @@ export default defineConfig(async () => ({
           // render with fixture data instead of showing the empty state.
           "@tauri-apps/api/core": path.resolve(__dirname, "src/tauri-mock.ts"),
           "@tauri-apps/api/event": path.resolve(__dirname, "src/tauri-mock.ts"),
+          "@tauri-apps/plugin-opener": path.resolve(__dirname, "src/tauri-mock.ts"),
         },
   },
 

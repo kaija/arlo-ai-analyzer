@@ -1,6 +1,6 @@
 import { useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { PRICING_TABLE, modelColor } from "../../pricing";
+import { PRICING_TABLE, isModelPriced, modelColor } from "../../pricing";
 import type { PricingEntry } from "../../pricing";
 import { Badge } from "../../primitives/Badge";
 import { useSessionsContext } from "../../context/SessionsContext";
@@ -23,7 +23,7 @@ function groupByModel(entries: PricingEntry[]): Map<string, PricingEntry[]> {
 }
 
 function fmtRate(perMtok: number): string {
-  if (perMtok === 0) return "—";
+  if (perMtok === 0) return "$0";
   const s = perMtok.toFixed(2).replace(/\.?0+$/, "");
   return `$${s}`;
 }
@@ -55,7 +55,6 @@ function rowRole(entries: PricingEntry[], entryIndex: number): RowRole {
 // Unpriced warning
 // ---------------------------------------------------------------------------
 
-const PRICED_MODELS = new Set(PRICING_TABLE.map((e) => e.model.toLowerCase()));
 
 interface UnpricedWarningStripProps {
   models: string[];
@@ -108,7 +107,7 @@ export function PricingCard() {
       const m = (s.model ?? "").toLowerCase();
       if (!m || seen.has(m)) continue;
       seen.add(m);
-      if (!PRICED_MODELS.has(m)) {
+      if (!isModelPriced(s.model)) {
         unpriced.push(s.model ?? m);
       }
     }
@@ -142,7 +141,7 @@ export function PricingCard() {
   };
 
   return (
-    <section className="card" aria-labelledby="pricing-card-heading">
+    <section id="pricing" className="card" aria-labelledby="pricing-card-heading" tabIndex={-1}>
       <div className="card-head">
         <div className="card-head-text">
           <h2 id="pricing-card-heading" className="card-title">{t("settings.pricing.title")}</h2>

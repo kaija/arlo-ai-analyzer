@@ -2,7 +2,8 @@ import { useState } from "react";
 import type { Request, StopReason, TokenKind } from "../../types";
 import { EffortBadge } from "../../primitives/Badge";
 import { Switch } from "../../primitives/Switch";
-import { fmtCost, fmtDate, fmtTokens } from "../../lib/format";
+import { openPath } from "@tauri-apps/plugin-opener";
+import { fmtCost, fmtTime, fmtTokens } from "../../lib/format";
 import { modelColor } from "../../pricing";
 
 // How many rows to show per "Load more" batch
@@ -18,13 +19,25 @@ const TOKEN_KIND_COLORS: Record<TokenKind, string> = {
   cache_read:     "var(--series-recessive)",
 };
 
-// Abbreviated labels for raw-counts display
+// Column-header labels. Spelled out rather than abbreviated — "cw5·cw1h"
+// tells you nothing about which number is which, and the header is the only
+// key to five differently-coloured figures.
 const TOKEN_KIND_LABELS: Record<TokenKind, string> = {
-  input:          "in",
-  output:         "out",
-  cache_write_5m: "cw5",
-  cache_write_1h: "cw1h",
-  cache_read:     "read",
+  input:          "Input",
+  output:         "Output",
+  cache_write_5m: "Cache write 5m",
+  cache_write_1h: "Cache write 1h",
+  cache_read:     "Cache read",
+};
+
+// Long form used in the hover breakdown, where there is room to say what each
+// kind actually is.
+const TOKEN_KIND_FULL_LABELS: Record<TokenKind, string> = {
+  input:          "Input (uncached prompt)",
+  output:         "Output (generated, includes thinking)",
+  cache_write_5m: "Cache write, 5-minute TTL",
+  cache_write_1h: "Cache write, 1-hour TTL",
+  cache_read:     "Cache read (prompt served from cache)",
 };
 
 // Consistent segment order
@@ -36,12 +49,38 @@ const TOKEN_KIND_ORDER: TokenKind[] = [
   "cache_read",
 ];
 
+/**
+ * Full breakdown for the hover tooltip: every kind named in full with its
+ * exact count. Uses a native `title` — the browser already renders multi-line
+ * tooltips and keyboard/screen-reader users get it for free.
+ */
+function tokenBreakdownTitle(r: Request): string {
+  const lines = TOKEN_KIND_ORDER.map(
+    (kind) =>
+      `${TOKEN_KIND_FULL_LABELS[kind]}: ${tokenValueForKind(r, kind).toLocaleString()}`,
+  );
+  return [
+    ...lines,
+    "",
+    `Total: ${requestTotalTokens(r).toLocaleString()} tokens`,
+  ].join("\n");
+}
+
+/** All token kinds a request was billed for. */
+function requestTotalTokens(r: Request): number {
+  return (
+    r.inputTokens + r.outputTokens + r.cacheWrite5m + r.cacheWrite1h + r.cacheRead
+  );
+}
+
 // Stop-reason display labels
 const STOP_REASON_LABELS: Record<StopReason, string> = {
-  end_turn:   "end_turn",
-  tool_use:   "tool_use",
-  max_tokens: "max_tokens",
-  refusal:    "refusal",
+  end_turn:      "end_turn",
+  tool_use:      "tool_use",
+  max_tokens:    "max_tokens",
+  stop_sequence: "stop_sequence",
+  refusal:       "refusal",
+  other:         "other",
 };
 
 // ---------------------------------------------------------------------------
@@ -53,6 +92,8 @@ interface RequestsTableProps {
   rawCounts: boolean;
   onToggleRawCounts: (on: boolean) => void;
   loading?: boolean;
+  /** Transcript file this session was read from; null when it's gone. */
+  transcriptPath: string | null;
 }
 
 /**
@@ -76,10 +117,15 @@ export function RequestsTable({
   rawCounts,
   onToggleRawCounts,
   loading = false,
+  transcriptPath,
 }: RequestsTableProps) {
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
 
   const visibleRequests = requests.slice(0, visibleCount);
+  // Bars were normalised to each row's own total, so every row drew the same
+  // length and only the colour split moved — magnitude was invisible and the
+  // column read as noise. Scale against the largest visible row instead.
+  const barScale = Math.max(1, ...visibleRequests.map(requestTotalTokens));
   const hasMore = visibleCount < requests.length;
 
   function loadMore() {
@@ -111,18 +157,22 @@ export function RequestsTable({
       <div className="req-table-wrap">
         {/* Header row */}
         <div className="req-head-row" role="row">
-          <span>Time</span>
+          <span title="Oldest first">Time</span>
           <span>Model</span>
           <span>Effort</span>
-          <span>
+          <span className={rawCounts ? "tok-head" : undefined}>
             Tokens
             {rawCounts && (
-              <span style={{ fontWeight: 400, textTransform: "none", letterSpacing: 0 }}>
-                {" "}(in·out·cw5·cw1h·read)
+              <span className="tok-head-key">
+                {TOKEN_KIND_ORDER.map((kind) => (
+                  <span key={kind} style={{ color: TOKEN_KIND_COLORS[kind] }}>
+                    {TOKEN_KIND_LABELS[kind]}
+                  </span>
+                ))}
               </span>
             )}
           </span>
-          <span className="req-cost-col">Cost</span>
+          <span className="req-cost req-cost-col">Cost</span>
           <span>Stop / Skill</span>
           <span />
         </div>
@@ -152,7 +202,13 @@ export function RequestsTable({
           </div>
         ) : (
           visibleRequests.map((req) => (
-            <RequestRow key={req.index} request={req} rawCounts={rawCounts} />
+            <RequestRow
+              key={req.index}
+              request={req}
+              rawCounts={rawCounts}
+              barScale={barScale}
+              transcriptPath={transcriptPath}
+            />
           ))
         )}
 
@@ -176,31 +232,34 @@ export function RequestsTable({
 interface RequestRowProps {
   request: Request;
   rawCounts: boolean;
+  /** Largest row total in the table; the mini-bar is drawn relative to it. */
+  barScale: number;
+  /** Transcript file this session was read from; null when it's gone. */
+  transcriptPath: string | null;
 }
 
-function RequestRow({ request, rawCounts }: RequestRowProps) {
+function RequestRow({
+  request,
+  rawCounts,
+  barScale,
+  transcriptPath,
+}: RequestRowProps) {
   const {
-    index,
     timestamp,
     model,
     effort,
-    inputTokens,
-    outputTokens,
-    cacheWrite5m,
-    cacheWrite1h,
-    cacheRead,
+    transcriptLine,
     costUsd,
     stopReason,
     skill,
   } = request;
 
-  const totalTok =
-    inputTokens + outputTokens + cacheWrite5m + cacheWrite1h + cacheRead;
+  const totalTok = requestTotalTokens(request);
 
   return (
     <div className="req-row" role="row">
       {/* Time */}
-      <span className="req-time mono">{fmtDate(timestamp)}</span>
+      <span className="req-time mono">{fmtTime(timestamp)}</span>
 
       {/* Model */}
       <span className="req-model">
@@ -218,7 +277,7 @@ function RequestRow({ request, rawCounts }: RequestRowProps) {
       </span>
 
       {/* Tokens — mini-bar or raw counts */}
-      <span className="tok-bar">
+      <span className="tok-bar" title={tokenBreakdownTitle(request)}>
         {rawCounts ? (
           <RawTokenCounts request={request} />
         ) : (
@@ -226,15 +285,14 @@ function RequestRow({ request, rawCounts }: RequestRowProps) {
             <span className="tok-mini" aria-label="Token distribution">
               {TOKEN_KIND_ORDER.map((kind) => {
                 const val = tokenValueForKind(request, kind);
-                if (val === 0 || totalTok === 0) return null;
+                if (val === 0) return null;
                 return (
                   <span
                     key={kind}
                     style={{
-                      width: `${(val / totalTok) * 100}%`,
+                      width: `${(val / barScale) * 100}%`,
                       background: TOKEN_KIND_COLORS[kind],
                     }}
-                    title={`${TOKEN_KIND_LABELS[kind]}: ${val.toLocaleString()}`}
                   />
                 );
               })}
@@ -255,13 +313,27 @@ function RequestRow({ request, rawCounts }: RequestRowProps) {
         {skill && <span className="skill-pill">{skill}</span>}
       </span>
 
-      {/* Transcript link — placeholder */}
-      <a
+      {/* Open the transcript file in the OS default handler. The line number
+          is the request's real position in the .jsonl, so it can be jumped to
+          once the file is open. */}
+      <button
+        type="button"
         className="transcript-link"
-        href="#"
-        title={`Transcript line ~${(index + 1) * 14}`}
-        aria-label="Open transcript"
-        onClick={(e) => e.preventDefault()}
+        disabled={!transcriptPath}
+        title={
+          transcriptPath
+            ? `Open transcript · line ${transcriptLine}`
+            : "Transcript file not found"
+        }
+        aria-label={`Open transcript at line ${transcriptLine}`}
+        onClick={(e) => {
+          e.stopPropagation();
+          if (transcriptPath) {
+            openPath(transcriptPath).catch((err) =>
+              console.error("openPath failed:", err),
+            );
+          }
+        }}
       >
         <svg
           viewBox="0 0 24 24"
@@ -275,7 +347,7 @@ function RequestRow({ request, rawCounts }: RequestRowProps) {
           <line x1="7" y1="17" x2="17" y2="7" />
           <polyline points="7 7 17 7 17 17" />
         </svg>
-      </a>
+      </button>
     </div>
   );
 }
@@ -295,11 +367,7 @@ function RawTokenCounts({ request }: RawTokenCountsProps) {
         const value = tokenValueForKind(request, kind);
         const isRead = kind === "cache_read";
         return (
-          <span
-            key={kind}
-            title={kind}
-            style={{ color: TOKEN_KIND_COLORS[kind] }}
-          >
+          <span key={kind} style={{ color: TOKEN_KIND_COLORS[kind] }}>
             {isRead ? <b>{fmtTokens(value)}</b> : fmtTokens(value)}
           </span>
         );

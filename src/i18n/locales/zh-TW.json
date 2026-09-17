@@ -48,16 +48,16 @@
       "title": "日誌目錄",
       "subtitle": "Arlo 從此路徑讀取 Claude Code 記錄，資料不會離開您的裝置。",
       "currentPath": "目前日誌目錄路徑",
-      "change": "變更\u2026",
+      "change": "變更…",
       "rescan": "重新掃描",
-      "scanning": "掃描中\u2026",
+      "scanning": "掃描中…",
       "scanFailed": "掃描失敗"
     },
     "pricing": {
       "title": "定價",
       "subtitle": "唯讀。費率對應每次請求發生時的價格，而非當前生效的費率。",
       "reprice": "重新計價",
-      "repricing": "重新計價中\u2026",
+      "repricing": "重新計價中…",
       "tableLabel": "模型定價費率",
       "colModel": "模型",
       "colInput": "輸入 /Mtok",
@@ -70,6 +70,17 @@
       "unpricedWarning": "找不到 {models} 的定價。費用估算可能不準確。",
       "introductory": "導入期",
       "standard": "標準"
+    },
+    "database": {
+      "title": "本地資料庫",
+      "subtitle": "Arlo 將 session 統計快取在本地 SQLite 檔案。裡面所有資料都能從 transcript 重算，重設不會遺失任何東西。",
+      "detail": "清空快取並從 {{path}} 重建。適用於清除已刪除 transcript 的 session，或重新套用計費與解析邏輯的變更。",
+      "reset": "重設資料庫",
+      "confirm": "確認重設",
+      "cancel": "取消",
+      "resetting": "重建中…",
+      "done": "已重建 {{count}} 個 session",
+      "failed": "重設失敗"
     }
   }
 }

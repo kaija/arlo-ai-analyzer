@@ -37,22 +37,55 @@ function trimTrailingZero(s: string): string {
  * Format a cost in USD with always-two decimal places: "$X.XX".
  * Negative values produce e.g. "-$0.50".
  */
-export function fmtCost(n: number): string {
+export function fmtCost(n: number | null): string {
+  if (n === null) return "—"; // unknown rate, not $0
   const abs = Math.abs(n);
   const sign = n < 0 ? "-" : "";
   return `${sign}$${abs.toFixed(2)}`;
 }
 
 /**
- * Format an ISO-8601 date string as a locale-friendly short date.
- * Example: "2024-01-05T10:30:00Z" → "Jan 5, 2024"
+ * Format an ISO-8601 timestamp as a short date **and** time.
+ *
+ * The year is only shown when it isn't the current one — for sessions from
+ * this year it is the same four digits on every row, and it was crowding out
+ * the time, which is the part that actually distinguishes them.
+ *
+ * Examples (viewed in 2026): "Aug 19, 14:32" · "Nov 4, 2025, 09:07"
  */
 export function fmtDate(iso: string): string {
+  if (!iso) return "—";
   const date = new Date(iso);
-  return date.toLocaleDateString("en-US", {
+  if (Number.isNaN(date.getTime())) return "—";
+
+  const showYear = date.getFullYear() !== new Date().getFullYear();
+  return date.toLocaleString("en-GB", {
     month: "short",
     day: "numeric",
-    year: "numeric",
+    year: showYear ? "numeric" : undefined,
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  });
+}
+
+/**
+ * Format an ISO-8601 timestamp as a 24-hour clock time.
+ * Example: "2026-08-19T10:30:05Z" → "10:30:05" (in the viewer's timezone)
+ *
+ * Requests inside one session almost always share a date, so the date alone
+ * makes every row read identically and hides which end of the table is newer.
+ * Returns "—" for a timestamp the transcript didn't carry.
+ */
+export function fmtTime(iso: string): string {
+  if (!iso) return "—";
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) return "—";
+  return date.toLocaleTimeString("en-GB", {
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    hour12: false,
   });
 }
 

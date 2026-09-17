@@ -48,16 +48,16 @@
       "title": "Logs directory",
       "subtitle": "Arlo reads Claude Code transcripts from this path — nothing leaves your machine.",
       "currentPath": "Current logs directory path",
-      "change": "Change\u2026",
+      "change": "Change…",
       "rescan": "Re-scan",
-      "scanning": "Scanning\u2026",
+      "scanning": "Scanning…",
       "scanFailed": "Scan failed"
     },
     "pricing": {
       "title": "Pricing",
       "subtitle": "Read-only. Rates are keyed to when each request happened, not the rate in effect today.",
       "reprice": "Re-price",
-      "repricing": "Re-pricing\u2026",
+      "repricing": "Re-pricing…",
       "tableLabel": "Model pricing rates",
       "colModel": "Model",
       "colInput": "Input /Mtok",
@@ -70,6 +70,17 @@
       "unpricedWarning": "Pricing not found for {models}. Cost estimates may be inaccurate.",
       "introductory": "Introductory",
       "standard": "Standard"
+    },
+    "database": {
+      "title": "Local database",
+      "subtitle": "Arlo caches session totals in a local SQLite file. Everything in it is recomputed from your transcripts — resetting loses nothing.",
+      "detail": "Clears the cache and rebuilds it from {{path}}. Use it to drop sessions whose transcripts you deleted, or to re-apply pricing and parser changes.",
+      "reset": "Reset database",
+      "confirm": "Confirm reset",
+      "cancel": "Cancel",
+      "resetting": "Rebuilding…",
+      "done": "Rebuilt {{count}} sessions",
+      "failed": "Reset failed"
     }
   }
 }

@@ -2,10 +2,12 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useSessionsContext } from "../../context/SessionsContext";
 import { filterByDateRange } from "../../lib/aggregate";
 import { totalTokens, estimatedCostUsd } from "../../pricing";
+import { contextPct } from "./SessionsTable";
 import type { Measure, Session } from "../../types";
 import { FilterBar, FilterBarSep } from "../../primitives/FilterBar";
 import { FilterChip } from "../../primitives/FilterChip";
 import { SegmentedControl } from "../../primitives/SegmentedControl";
+import { CustomDatePopover } from "../../primitives/CustomDatePopover";
 import { SessionsTable } from "./SessionsTable";
 
 // ---------------------------------------------------------------------------
@@ -21,7 +23,7 @@ const DATE_PRESETS = [
   { value: "all", label: "All" },
 ] as const;
 
-type DatePreset = (typeof DATE_PRESETS)[number]["value"];
+type DatePreset = (typeof DATE_PRESETS)[number]["value"] | "custom";
 
 const MEASURE_OPTIONS: Array<{ value: Measure; label: string }> = [
   { value: "tokens", label: "Tokens" },
@@ -63,7 +65,11 @@ function daysAgoIso(daysAgo: number): string {
 }
 
 /** Derive the [start, end] date range from the active preset. */
-function presetToRange(preset: DatePreset): { start: string; end: string } {
+function presetToRange(
+  preset: DatePreset,
+  customStart?: string,
+  customEnd?: string,
+): { start: string; end: string } {
   const end = new Date().toISOString().slice(0, 10);
   switch (preset) {
     case "7d":
@@ -72,6 +78,9 @@ function presetToRange(preset: DatePreset): { start: string; end: string } {
       return { start: daysAgoIso(29), end };
     case "90d":
       return { start: daysAgoIso(89), end };
+    case "custom":
+      if (customStart && customEnd) return { start: customStart, end: customEnd };
+      return { start: "2020-01-01", end }; // fallback until user picks dates
     case "all":
       // Use a very early start date to include everything
       return { start: "2020-01-01", end };
@@ -139,14 +148,11 @@ function sortSessions(
         cmp = estimatedCostUsd(a) - estimatedCostUsd(b);
         break;
       case "context":
-        // Context high-water: (input + cache_read) / 200_000
-        cmp =
-          a.input_tokens + a.cache_read_tokens - (b.input_tokens + b.cache_read_tokens);
+        // Sort by what the column shows: peak prompt against its model's window.
+        cmp = contextPct(a) - contextPct(b);
         break;
       case "compactions":
-        // Not available from backend yet; sort by 0 (stable)
-        // TODO: needs backend
-        cmp = 0;
+        cmp = a.compaction_count - b.compaction_count;
         break;
     }
     return dir === "asc" ? cmp : -cmp;
@@ -189,6 +195,9 @@ export default function SessionsPage() {
 
   // ── Filter state ──────────────────────────────────────────────────────────
   const [datePreset, setDatePreset] = useState<DatePreset>("all");
+  const [customStart, setCustomStart] = useState<string>("");
+  const [customEnd,   setCustomEnd]   = useState<string>("");
+  const [showCustomPopover, setShowCustomPopover] = useState(false);
   const [measure, setMeasure] = useState<Measure>("tokens");
   const [searchText, setSearchText] = useState("");
   const [chips, setChips] = useState<FilterChipDef[]>([]);
@@ -206,10 +215,13 @@ export default function SessionsPage() {
   // Reset to first page whenever filters change
   useEffect(() => {
     setPage(0);
-  }, [datePreset, debouncedSearch, chips, sortKey, sortDir]);
+  }, [datePreset, customStart, customEnd, debouncedSearch, chips, sortKey, sortDir]);
 
   // ── Derived: date range from preset ───────────────────────────────────────
-  const dateRange = useMemo(() => presetToRange(datePreset), [datePreset]);
+  const dateRange = useMemo(
+    () => presetToRange(datePreset, customStart, customEnd),
+    [datePreset, customStart, customEnd],
+  );
 
   // ── Derived: filtered + sorted sessions ───────────────────────────────────
   const filteredSessions = useMemo(() => {
@@ -264,14 +276,30 @@ export default function SessionsPage() {
       {/* Filter bar — matches mockup: [All time ▾] [7d 30d 90d All Custom] | [Tokens Requests Cost] | [🔍 Filter sessions…] */}
       <FilterBar>
         {/* Date range field dropdown */}
-        <div className="field">
+        <div className="field date-range-field-wrap">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>
           </svg>
-          <span>{datePreset === "all" ? "All time" : datePreset === "7d" ? "Last 7 days" : datePreset === "30d" ? "Last 30 days" : datePreset === "90d" ? "Last 90 days" : "Custom"}</span>
+          <span>
+            {datePreset === "all"  ? "All time"      :
+             datePreset === "7d"  ? "Last 7 days"   :
+             datePreset === "30d" ? "Last 30 days"  :
+             datePreset === "90d" ? "Last 90 days"  :
+             (customStart && customEnd) ? `${customStart} – ${customEnd}` : "Custom"}
+          </span>
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <polyline points="6 9 12 15 18 9"/>
           </svg>
+
+          {/* Custom date popover — anchored to this field */}
+          {showCustomPopover && (
+            <CustomDatePopover
+              start={customStart}
+              end={customEnd}
+              onApply={(start, end) => { setCustomStart(start); setCustomEnd(end); }}
+              onClose={() => setShowCustomPopover(false)}
+            />
+          )}
         </div>
 
         <SegmentedControl
@@ -284,7 +312,16 @@ export default function SessionsPage() {
           ]}
           value={datePreset}
           onChange={(v) => {
-            if (v !== "custom") setDatePreset(v as DatePreset);
+            const preset = v as DatePreset;
+            setDatePreset(preset);
+            if (preset === "custom") {
+              if (!customStart || !customEnd) {
+                const today = new Date().toISOString().slice(0, 10);
+                setCustomStart(daysAgoIso(29)); // seed with last-30-days range
+                setCustomEnd(today);
+              }
+              setShowCustomPopover(true);
+            }
           }}
           ariaLabel="Date range preset"
         />

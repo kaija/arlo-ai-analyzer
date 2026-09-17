@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { fmtTokens, fmtCost, fmtDate, fmtDuration } from "./format";
+import { fmtTokens, fmtCost, fmtDate, fmtTime, fmtDuration } from "./format";
 
 // Requirements: 3.1
 
@@ -77,13 +77,28 @@ describe("fmtCost", () => {
 });
 
 describe("fmtDate", () => {
-  it("formats an ISO date string as a short locale date", () => {
-    expect(fmtDate("2024-01-05T10:30:00Z")).toBe("Jan 5, 2024");
+  it("keeps the year for dates outside the current year", () => {
+    // Noon UTC avoids a local-timezone rollover at midnight.
+    expect(fmtDate("2023-12-31T12:00:00Z")).toMatch(
+      /^31 Dec 2023, \d{2}:\d{2}$/,
+    );
   });
 
-  it("handles end-of-year dates", () => {
-    // Use noon UTC to avoid local-timezone rollover at midnight
-    expect(fmtDate("2023-12-31T12:00:00Z")).toBe("Dec 31, 2023");
+  it("drops the year for dates in the current year", () => {
+    const now = new Date();
+    const sameYear = new Date(now.getFullYear(), 5, 15, 12, 0, 0);
+    const out = fmtDate(sameYear.toISOString());
+    expect(out).not.toContain(String(now.getFullYear()));
+    expect(out).toMatch(/^15 Jun, \d{2}:\d{2}$/);
+  });
+
+  it("always carries a time — the date alone repeats on every row", () => {
+    expect(fmtDate("2023-12-31T12:00:00Z")).toMatch(/\d{2}:\d{2}$/);
+  });
+
+  it("returns an em dash for a missing or unparseable timestamp", () => {
+    expect(fmtDate("")).toBe("—");
+    expect(fmtDate("nope")).toBe("—");
   });
 });
 
@@ -122,5 +137,16 @@ describe("fmtDuration", () => {
 
   it("formats exact-day durations without hours part", () => {
     expect(fmtDuration("2024-01-01T00:00:00Z", "2024-01-04T00:00:00Z")).toBe("3d");
+  });
+});
+
+describe("fmtTime", () => {
+  it("renders a 24-hour clock so row order is legible", () => {
+    expect(fmtTime("2026-08-19T10:30:05Z")).toMatch(/^\d{2}:\d{2}:\d{2}$/);
+  });
+
+  it("returns an em dash for a missing or unparseable timestamp", () => {
+    expect(fmtTime("")).toBe("—");
+    expect(fmtTime("not-a-date")).toBe("—");
   });
 });

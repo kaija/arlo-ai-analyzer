@@ -2,7 +2,7 @@ import { useNavigate } from "react-router-dom";
 import type { Session, Measure } from "../../types";
 import { Meter } from "../../primitives/Meter";
 import { fmtTokens, fmtCost, fmtDate, fmtDuration } from "../../lib/format";
-import { modelColor, totalTokens, estimatedCostUsd } from "../../pricing";
+import { contextWindow, modelColor, totalTokens, estimatedCostUsd } from "../../pricing";
 
 export interface SessionsTableProps {
   sessions: Session[];
@@ -89,11 +89,15 @@ function CompactionCell({ count }: { count: number }) {
 }
 
 // ---------------------------------------------------------------------------
-// Context pct — 200K token ceiling
+// Context pct — peak prompt vs the context window of the model that carried
+// it. Not `s.model`: that is the session's first turn, and Claude Code opens
+// many sessions with a 200K-window Haiku title call.
 // ---------------------------------------------------------------------------
 
-function contextPct(s: Session): number {
-  return ((s.input_tokens + s.cache_read_tokens) / 200_000) * 100;
+export function contextPct(s: Session): number {
+  return (
+    (s.peak_context_tokens / contextWindow(s.peak_context_model ?? s.model)) * 100
+  );
 }
 
 // ---------------------------------------------------------------------------
@@ -128,7 +132,7 @@ export function SessionsTable({ sessions, measure, onRowClick, sortKey, sortDir,
       <tbody>
         {sessions.map((s) => {
           const branch = (s as any).branch ?? "—";
-          const compactions = (s as any).compactions ?? 0;
+          const compactions = s.compaction_count;
           const hw = contextPct(s);
           const dur = fmtDuration(s.started_at, new Date().toISOString());
 

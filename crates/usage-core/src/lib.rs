@@ -6,9 +6,8 @@ pub mod sources;
 pub mod watcher;
 
 pub use db::Db;
-pub use model::{Session, SessionRequest, ToolKind};
+pub use model::{Compaction, Session, SessionDetail, SessionRequest, ToolKind};
 pub use source::UsageSource;
-pub use sources::claude_code::get_session_requests;
 
 use anyhow::Result;
 
@@ -19,6 +18,18 @@ pub fn all_sources() -> Vec<Box<dyn UsageSource>> {
         Box::new(sources::gemini_cli::GeminiCliSource::new()),
         Box::new(sources::codex_cli::CodexCliSource::new()),
     ]
+}
+
+/// Per-request detail for one session, whichever tool wrote it.
+///
+/// The command carries only a session id, so the sources are tried in turn.
+/// Ids are uuids, so the first non-empty answer is the right one.
+pub fn get_session_detail(session_id: &str) -> Result<SessionDetail> {
+    let detail = sources::claude_code::get_session_detail(session_id)?;
+    if !detail.requests.is_empty() {
+        return Ok(detail);
+    }
+    sources::codex_cli::get_session_detail(session_id)
 }
 
 pub fn scan_all() -> Result<Vec<Session>> {

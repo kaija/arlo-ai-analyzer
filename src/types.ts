@@ -16,8 +16,29 @@ export interface Session {
   input_tokens: number;
   output_tokens: number;
   cache_creation_tokens: number;
+  /** Cache-write tokens at the 5-minute TTL tier (priced at input x1.25). */
+  cache_write_5m: number;
+  /** Cache-write tokens at the 1-hour TTL tier (priced at input x2). */
+  cache_write_1h: number;
   cache_read_tokens: number;
+  /** Largest prompt any single request in this session carried. */
+  peak_context_tokens: number;
+  /**
+   * Model that carried the peak request — the one whose context window this
+   * session should be judged against. `model` is the session's *first* turn,
+   * which is often a throwaway Haiku title call.
+   */
+  peak_context_model: string | null;
+  /** Number of compact_boundary events in the transcript. */
+  compaction_count: number;
   message_count: number;
+  /**
+   * Pre-computed cost in USD, accumulated per-request by the Rust backend so
+   * each turn uses its own model's rate. Older / non-Claude sessions where the
+   * backend hasn't computed this will have 0; consumers should fall back to
+   * `estimatedCostUsd()` in that case.
+   */
+  cost_usd: number;
 }
 
 // --- Dashboard / filter state types ---
@@ -25,13 +46,19 @@ export interface Session {
 export type Measure = "tokens" | "requests" | "cost";
 export type Granularity = "hour" | "day" | "week";
 export type StackBy = "model" | "tokenkind" | "project" | "skill";
-export type StopReason = "end_turn" | "tool_use" | "max_tokens" | "refusal";
-export type Effort = "medium" | "high" | "xhigh";
+export type StopReason =
+  | "end_turn"
+  | "tool_use"
+  | "max_tokens"
+  | "stop_sequence"
+  | "refusal"
+  | "other";
+export type Effort = "low" | "medium" | "high" | "xhigh" | "max";
 export type TokenKind = "input" | "output" | "cache_write_5m" | "cache_write_1h" | "cache_read";
 
 // --- Session detail types ---
 
-/** Raw shape returned by the `get_session_requests` Tauri command (snake_case from serde). */
+/** Raw shape returned inside `get_session_detail` (snake_case from serde). */
 export interface SessionRequest {
   index: number;
   timestamp: string;
@@ -39,10 +66,37 @@ export interface SessionRequest {
   context_tokens: number;
   input_tokens: number;
   output_tokens: number;
-  cache_creation_tokens: number;
+  /** 5-minute cache-write tier tokens (from usage.cache_creation.ephemeral_5m_input_tokens) */
+  cache_write_5m: number;
+  /** 1-hour cache-write tier tokens (from usage.cache_creation.ephemeral_1h_input_tokens) */
+  cache_write_1h: number;
   cache_read_tokens: number;
-  cost_usd: number;
+  /** null when the model has no known rate — "unknown", not "free". */
+  cost_usd: number | null;
   stop_reason: StopReason;
+  /** 1-based line of this request in the transcript file. */
+  transcript_line: number;
+  /** Reasoning effort, or null on records that predate the field. */
+  effort: Effort | null;
+}
+
+/** A compact_boundary event, as logged by Claude Code. */
+export interface Compaction {
+  /** Index of the last request before the boundary. */
+  before_index: number;
+  timestamp: string;
+  /** "auto" when Claude Code compacted on its own, "manual" for /compact. */
+  trigger: "auto" | "manual";
+  pre_tokens: number;
+  post_tokens: number;
+}
+
+/** Raw shape returned by the `get_session_detail` Tauri command. */
+export interface SessionDetailPayload {
+  requests: SessionRequest[];
+  compactions: Compaction[];
+  /** Absolute path of the transcript .jsonl, or null if it was not found. */
+  transcript_path: string | null;
 }
 
 /** Normalised shape used throughout the UI (camelCase). */
@@ -50,17 +104,21 @@ export interface Request {
   index: number;
   timestamp: string;
   model: string;
-  /** Cumulative context tokens at this turn — used for the timeline chart. */
+  /** Full prompt size this request carried (input + cache writes + cache read). */
   contextTokens: number;
   inputTokens: number;
   outputTokens: number;
   cacheWrite5m: number;
   cacheWrite1h: number;
   cacheRead: number;
-  costUsd: number;
+  /** null when the model has no known rate — render as "—", not "$0.00". */
+  costUsd: number | null;
   stopReason: StopReason;
-  /** Effort and skill are not available from the backend yet. */
-  effort: Effort;
+  /** 1-based line of this request in the transcript file. */
+  transcriptLine: number;
+  /** null on records that predate the transcript's `effort` field. */
+  effort: Effort | null;
+  /** TODO: needs backend — per-request skill attribution. */
   skill: string | null;
 }
 
@@ -73,13 +131,14 @@ export function toRequest(r: SessionRequest): Request {
     contextTokens: r.context_tokens,
     inputTokens: r.input_tokens,
     outputTokens: r.output_tokens,
-    cacheWrite5m: 0,          // not separately tracked by the JSONL format
-    cacheWrite1h: r.cache_creation_tokens,
+    cacheWrite5m: r.cache_write_5m,
+    cacheWrite1h: r.cache_write_1h,
     cacheRead: r.cache_read_tokens,
     costUsd: r.cost_usd,
     stopReason: r.stop_reason,
-    effort: "medium",          // not available from backend
-    skill: null,               // not available from backend
+    transcriptLine: r.transcript_line,
+    effort: r.effort,
+    skill: null,
   };
 }
 

@@ -32,14 +32,14 @@
    .stat-grid { display: grid; grid-template-columns: repeat(4, 1fr); ... }
    @media (max-width: 920px) { .stat-grid { grid-template-columns: repeat(2, 1fr); } } */
 
-/* ---------- Dashboard — tri-column breakdown tables ---------- */
+/* ---------- Dashboard — breakdown tables ---------- */
 .tri-tables {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(2, 1fr);
   gap: 1rem;
 }
 
-@media (max-width: 1100px) {
+@media (max-width: 768px) {
   .tri-tables {
     grid-template-columns: 1fr;
   }
@@ -115,7 +115,8 @@
 .threshold-val { font-size: 12.5px; font-weight: 700; font-variant-numeric: tabular-nums; color: var(--accent); }
 input[type="range"].settings-range { width: 200px; accent-color: var(--accent); }
 
-.field-error-inline { font-size: 11px; color: var(--critical); margin-top: 4px; }
+.field-error-inline { font-size: 11px; color: var(--critical); margin-top: 4px; padding: 0 24px 16px; }
+.field-note-inline { font-size: 11px; color: var(--muted); margin-top: 4px; padding: 0 24px 16px; }
 
 /* Notifications rows */
 .notif-form { padding: 0 24px; display: flex; flex-direction: column; }
@@ -215,8 +216,12 @@ input[type="range"].settings-range { width: 200px; accent-color: var(--accent); 
   transition: filter 120ms ease;
 }
 .bar-seg:last-child { margin-bottom: 0; }
-/* Top segment gets rounded corners */
+/* Top segment — rounded top corners (.stack is column-reverse, so :first-child is the top) */
 .bar-seg:first-child { border-radius: 3px 3px 0 0; }
+/* Bottom segment — rounded bottom corners */
+.bar-seg:last-child  { border-radius: 0 0 3px 3px; }
+/* Single segment — fully rounded */
+.bar-seg:first-child:last-child { border-radius: 3px; }
 
 /* Hover brightening */
 .bar-col:hover .bar-seg,
@@ -344,3 +349,86 @@ input[type="range"].settings-range { width: 200px; accent-color: var(--accent); 
 
 /* Share bar sits below the name inside the same td */
 .tri-tables .share-bar-track { width: 100%; max-width: 80px; }
+
+/* ---------- Custom date range popover ---------- */
+
+/* The field wrapper needs position:relative so the popover anchors to it */
+.date-range-field-wrap { position: relative; }
+
+.custom-date-popover {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  z-index: 200;
+  background: var(--surface);
+  border: 1px solid var(--border-strong);
+  border-radius: 12px;
+  box-shadow: var(--shadow-lg);
+  padding: 16px;
+  min-width: 240px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.custom-date-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.custom-date-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--muted);
+  width: 32px;
+  flex: 0 0 auto;
+}
+
+.custom-date-input {
+  flex: 1 1 auto;
+  height: 30px;
+  border-radius: 7px;
+  border: 1px solid var(--border-strong);
+  background: var(--bg);
+  color: var(--fg);
+  font-size: 12.5px;
+  padding: 0 8px;
+  cursor: pointer;
+  font-family: inherit;
+}
+.custom-date-input:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-ring);
+}
+
+.custom-date-error {
+  font-size: 11px;
+  color: var(--critical);
+  margin: 0;
+}
+
+.custom-date-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.custom-date-cancel {
+  font-size: 12px;
+  padding: 0 12px;
+  height: 28px;
+}
+
+.custom-date-apply {
+  font-size: 12px;
+  padding: 0 14px;
+  height: 28px;
+  border-radius: 7px;
+}
+.custom-date-apply:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}

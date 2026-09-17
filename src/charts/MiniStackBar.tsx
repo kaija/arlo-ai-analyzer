@@ -16,7 +16,9 @@ export const STOP_REASON_COLORS: Record<StopReason, string> = {
   end_turn: "var(--good)",
   tool_use: "var(--muted-2)",
   max_tokens: "var(--warning)",
+  stop_sequence: "var(--series-recessive)",
   refusal: "var(--critical)",
+  other: "var(--series-recessive)",
 };
 
 export interface MiniStackSegment {

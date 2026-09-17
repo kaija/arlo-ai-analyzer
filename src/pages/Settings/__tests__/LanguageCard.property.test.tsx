@@ -108,7 +108,9 @@ describe("Property 6 – LanguageCard selection triggers setLanguage", () => {
           return allCorrect;
         }
       ),
-      { numRuns: 100 }
+      // The domain is three locales, so 100 full React renders is 97 repeats —
+      // enough to blow the 5s test timeout when the suite runs in parallel.
+      { numRuns: SUPPORTED_LOCALES.length * 4 }
     );
   });
 

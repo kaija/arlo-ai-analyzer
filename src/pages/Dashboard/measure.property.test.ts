@@ -62,8 +62,14 @@ const sessionArb: fc.Arbitrary<Session> = fc.record<Session>({
   input_tokens: fc.nat({ max: 200_000 }),
   output_tokens: fc.nat({ max: 20_000 }),
   cache_creation_tokens: fc.nat({ max: 100_000 }),
+  cache_write_5m: fc.nat({ max: 100_000 }),
+  cache_write_1h: fc.nat({ max: 100_000 }),
   cache_read_tokens: fc.nat({ max: 100_000 }),
+  peak_context_tokens: fc.nat({ max: 1_000_000 }),
+  peak_context_model: modelArb,
+  compaction_count: fc.nat({ max: 10 }),
   message_count: fc.nat({ max: 500 }),
+  cost_usd: fc.nat({ max: 1_000 }),
 });
 
 const measureArb = fc.constantFrom<Measure>("tokens", "requests", "cost");

@@ -49,6 +49,10 @@ lint-rust:
 lint-frontend:
 	pnpm tsc --noEmit -p tsconfig.json && pnpm tsc --noEmit -p tsconfig.test.json
 
+## update-openrouter-pricing: Re-fetch OpenRouter model list and regenerate src/lib/openrouter-pricing.ts
+update-openrouter-pricing:
+	node --experimental-strip-types scripts/fetch-openrouter-pricing.ts
+
 ## clean: Remove build artifacts
 clean:
 	cargo clean

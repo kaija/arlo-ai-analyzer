@@ -10,17 +10,28 @@ const STOP_COLORS: Record<StopReason, string> = {
   end_turn: "var(--good)",
   tool_use: "var(--muted-2)",
   max_tokens: "var(--warning)",
+  stop_sequence: "var(--series-recessive)",
   refusal: "var(--critical)",
+  other: "var(--series-recessive)",
 };
 
 const STOP_LABELS: Record<StopReason, string> = {
   end_turn: "end_turn",
   tool_use: "tool_use",
   max_tokens: "max_tokens",
+  stop_sequence: "stop_sequence",
   refusal: "refusal",
+  other: "other",
 };
 
-const STOP_ORDER: StopReason[] = ["end_turn", "tool_use", "max_tokens", "refusal"];
+const STOP_ORDER: StopReason[] = [
+  "end_turn",
+  "tool_use",
+  "max_tokens",
+  "stop_sequence",
+  "refusal",
+  "other",
+];
 
 export function ToolFailuresCard({ breakdown, totalRequests }: ToolFailuresCardProps) {
   const maxTokensCount = breakdown.max_tokens;

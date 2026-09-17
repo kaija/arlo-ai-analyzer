@@ -74,14 +74,8 @@ function tokenKindBreakdown(sessions: Session[]): Record<TokenKind, number> {
     (acc, s) => ({
       input: acc.input + s.input_tokens,
       output: acc.output + s.output_tokens,
-      // cache_creation_tokens maps to cache_write_5m (5-minute tier) in the
-      // Session struct; cache_write_1h is not separately tracked in the current
-      // backend — it is included in cache_creation_tokens on newer models but
-      // cannot be split without per-request detail. We map all cache creation
-      // to cache_write_5m as a best-effort until the backend exposes the split.
-      // TODO: needs backend — split cache_write_5m / cache_write_1h properly
-      cache_write_5m: acc.cache_write_5m + s.cache_creation_tokens,
-      cache_write_1h: acc.cache_write_1h + 0,
+      cache_write_5m: acc.cache_write_5m + s.cache_write_5m,
+      cache_write_1h: acc.cache_write_1h + s.cache_write_1h,
       cache_read: acc.cache_read + s.cache_read_tokens,
     }),
     { input: 0, output: 0, cache_write_5m: 0, cache_write_1h: 0, cache_read: 0 },

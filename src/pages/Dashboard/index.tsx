@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import type {
   Granularity,
   Measure,
@@ -16,7 +17,7 @@ import {
   bucketByWeek,
   bucketByHour,
 } from "../../lib/aggregate";
-import { PRICING_TABLE, modelColor } from "../../pricing";
+import { isModelPriced, modelColor } from "../../pricing";
 import { TOKEN_KIND_COLORS } from "../../charts/MiniStackBar";
 import { useSessionsContext } from "../../context/SessionsContext";
 import { useSettingsContext } from "../../context/SettingsContext";
@@ -24,6 +25,7 @@ import { contextHealthSessions } from "../../lib/insights";
 import { FilterBar, FilterBarSep } from "../../primitives/FilterBar";
 import { FilterChip } from "../../primitives/FilterChip";
 import { SegmentedControl } from "../../primitives/SegmentedControl";
+import { CustomDatePopover } from "../../primitives/CustomDatePopover";
 import { AlertBanner } from "./AlertBanner";
 import { WarnStrip } from "./WarnStrip";
 import { StatTilesRow } from "./StatTilesRow";
@@ -38,11 +40,29 @@ import { ScanState } from "./ScanState";
 
 type DatePreset = "7d" | "30d" | "90d" | "all" | "custom";
 
-function dateRangeForPreset(preset: DatePreset, sessions?: { started_at: string }[]): DateRange {
+function dateRangeForPreset(
+  preset: DatePreset,
+  sessions?: { started_at: string }[],
+  customStart?: string,
+  customEnd?: string,
+): DateRange {
   const today = new Date();
   const end = today.toISOString().slice(0, 10);
 
-  if (preset === "all" || preset === "custom") {
+  if (preset === "custom") {
+    // Use explicit custom range when provided
+    if (customStart && customEnd) {
+      return { start: customStart, end: customEnd };
+    }
+    // Fallback: same as "all" until the user picks dates
+    if (sessions && sessions.length > 0) {
+      const earliest = sessions.map((s) => s.started_at.slice(0, 10)).sort()[0];
+      return { start: earliest, end };
+    }
+    return { start: end, end };
+  }
+
+  if (preset === "all") {
     // Use the earliest session date so we don't generate thousands of empty buckets
     if (sessions && sessions.length > 0) {
       const earliest = sessions
@@ -117,20 +137,6 @@ function projectDims(sessions: { project: string }[]): Dimension[] {
 }
 
 // ---------------------------------------------------------------------------
-// Pricing-table model set for unpriced-model detection
-// ---------------------------------------------------------------------------
-
-const PRICED_MODEL_PATTERNS = PRICING_TABLE.map((e) => e.model.toLowerCase());
-
-function isModelPriced(model: string | null): boolean {
-  if (!model) return true; // null model → skip warning
-  const m = model.toLowerCase();
-  return PRICED_MODEL_PATTERNS.some(
-    (pattern) => m.includes(pattern) || pattern.includes(m)
-  );
-}
-
-// ---------------------------------------------------------------------------
 // DashboardPage
 // ---------------------------------------------------------------------------
 
@@ -138,12 +144,16 @@ export default function DashboardPage() {
   // --- contexts ---
   const { sessions, loading, scanState } = useSessionsContext();
   const { contextAlertThreshold } = useSettingsContext();
+  const navigate = useNavigate();
 
   // --- filter state ---
   const [measure, setMeasure] = useState<Measure>("tokens");
   const [granularity, setGranularity] = useState<Granularity>("day");
   const [stackBy, setStackBy] = useState<StackBy>("model");
   const [datePreset, setDatePreset] = useState<DatePreset>("all");
+  const [customStart, setCustomStart] = useState<string>("");
+  const [customEnd, setCustomEnd]     = useState<string>("");
+  const [showCustomPopover, setShowCustomPopover] = useState(false);
   const [drillDayIndex, setDrillDayIndex] = useState<number | null>(null);
   const [kindOn, setKindOn] = useState<Record<TokenKind, boolean>>({
     input: true,
@@ -153,12 +163,15 @@ export default function DashboardPage() {
     cache_read: false, // off by default — cache read dominates scale and makes other bars unreadable
   });
   const [entityFilter, setEntityFilter] = useState<{
-    kind: "model" | "project" | "branch";
+    kind: "model" | "project";
     name: string;
   } | null>(null);
 
   // --- derived date range ---
-  const dateRange = useMemo(() => dateRangeForPreset(datePreset, sessions), [datePreset, sessions]);
+  const dateRange = useMemo(
+    () => dateRangeForPreset(datePreset, sessions, customStart, customEnd),
+    [datePreset, sessions, customStart, customEnd],
+  );
 
   // --- filtered sessions (by date range) ---
   const filteredSessions = useMemo(
@@ -174,7 +187,6 @@ export default function DashboardPage() {
         return (s.model ?? "unknown") === entityFilter.name;
       if (entityFilter.kind === "project")
         return s.project === entityFilter.name;
-      // branch not yet available from backend
       return false;
     });
   }, [filteredSessions, entityFilter]);
@@ -351,6 +363,24 @@ export default function DashboardPage() {
     // Clear drill when changing date range
     setDrillDayIndex(null);
     if (granularity === "hour") setGranularity("day");
+    if (preset === "custom") {
+      // Open popover; seed with current dateRange if no custom range yet
+      if (!customStart || !customEnd) {
+        const today = new Date().toISOString().slice(0, 10);
+        const fallbackStart =
+          sessions.length > 0
+            ? sessions.map((s) => s.started_at.slice(0, 10)).sort()[0]
+            : today;
+        setCustomStart(fallbackStart);
+        setCustomEnd(today);
+      }
+      setShowCustomPopover(true);
+    }
+  }
+
+  function handleCustomApply(start: string, end: string) {
+    setCustomStart(start);
+    setCustomEnd(end);
   }
 
   // ---------------------------------------------------------------------------
@@ -403,6 +433,7 @@ export default function DashboardPage() {
         <WarnStrip
           message={<><strong>Some models unpriced</strong> — requests / tokens excluded from cost totals.</>}
           linkText="View"
+          onLinkClick={() => navigate("/settings#pricing")}
         />
       )}
 
@@ -410,14 +441,30 @@ export default function DashboardPage() {
           [All time ▾] [7d 30d 90d All Custom] | [Tokens Requests Cost] | [Hour Day Week] [Stack by: Model ▾]  ···grow···  [+ Filter] */}
       <FilterBar>
         {/* Date range field dropdown */}
-        <div className="field" id="dateRangeField">
+        <div className="field date-range-field-wrap" id="dateRangeField">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>
           </svg>
-          <span>{datePreset === "all" ? "All time" : datePreset === "custom" ? "Custom" : datePreset === "7d" ? "Last 7 days" : datePreset === "30d" ? "Last 30 days" : "Last 90 days"}</span>
+          <span>
+            {datePreset === "all"    ? "All time"      :
+             datePreset === "7d"    ? "Last 7 days"   :
+             datePreset === "30d"   ? "Last 30 days"  :
+             datePreset === "90d"   ? "Last 90 days"  :
+             (customStart && customEnd) ? `${customStart} – ${customEnd}` : "Custom"}
+          </span>
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <polyline points="6 9 12 15 18 9"/>
           </svg>
+
+          {/* Custom date popover — anchored to this field */}
+          {showCustomPopover && (
+            <CustomDatePopover
+              start={customStart}
+              end={customEnd}
+              onApply={handleCustomApply}
+              onClose={() => setShowCustomPopover(false)}
+            />
+          )}
         </div>
 
         {/* Date presets */}

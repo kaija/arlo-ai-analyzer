@@ -9,7 +9,8 @@ import {
   type RequestPoint,
   type CompactionEvent,
 } from "../../charts/ContextTimelineChart";
-import type { Request, SessionRequest } from "../../types";
+import { contextWindow } from "../../pricing";
+import type { Compaction, Request, SessionDetailPayload } from "../../types";
 import { toRequest } from "../../types";
 
 // ---------------------------------------------------------------------------
@@ -68,8 +69,8 @@ function ContextChartCard({
  * - Request toolbar: count label + raw-counts `Switch`
  * - `RequestsTable` — per-request rows with mini-bar / raw-counts toggle
  *
- * Per-request detail (requests, compactions) is not yet available from the
- * backend. Stubs are used with // TODO: needs backend markers.
+ * Per-request detail and compaction events come from the `get_session_detail`
+ * Tauri command, which re-reads the transcript from disk.
  *
  * Requirements: 5.1–5.16, 10.6, 10.7, 11.3, 11.4
  */
@@ -79,6 +80,8 @@ export default function SessionDetailPage() {
 
   const [rawCounts, setRawCounts] = useState(false);
   const [requests, setRequests] = useState<Request[]>([]);
+  const [compactions, setCompactions] = useState<Compaction[]>([]);
+  const [transcriptPath, setTranscriptPath] = useState<string | null>(null);
   const [requestsLoading, setRequestsLoading] = useState(false);
 
   // Fetch per-request detail whenever the session id changes.
@@ -86,9 +89,13 @@ export default function SessionDetailPage() {
   useEffect(() => {
     if (!id) return;
     setRequestsLoading(true);
-    invoke<SessionRequest[]>("get_session_requests", { sessionId: id })
-      .then((raw) => setRequests(raw.map(toRequest)))
-      .catch((err) => console.error("get_session_requests failed:", err))
+    invoke<SessionDetailPayload>("get_session_detail", { sessionId: id })
+      .then((detail) => {
+        setRequests(detail.requests.map(toRequest));
+        setCompactions(detail.compactions);
+        setTranscriptPath(detail.transcript_path);
+      })
+      .catch((err) => console.error("get_session_detail failed:", err))
       .finally(() => setRequestsLoading(false));
   }, [id]);
 
@@ -120,15 +127,18 @@ export default function SessionDetailPage() {
 
   // ── Derived: real request data from the backend invoke ───────────────────
 
-  // Compactions: not yet detected from JSONL; derive from drops in context_tokens.
-  const compactions: CompactionEvent[] = [];
-
   // Authoritative request count: prefer live fetched requests; fall back to
   // session.message_count while the fetch is still in-flight.
   const requestCount = requests.length > 0 ? requests.length : session.message_count;
 
-  // Compaction count placeholder — no compaction detection yet.
-  const compactionCount = 0;
+  // Claude Code logs each compaction explicitly, so this is a count of real
+  // events rather than an inference from the context curve.
+  const compactionEvents: CompactionEvent[] = compactions.map((c) => ({
+    beforeIndex: c.before_index,
+    preTokens: c.pre_tokens,
+    postTokens: c.post_tokens,
+  }));
+  const compactionCount = compactions.length;
 
   // Build RequestPoint[] for the context-usage chart from real context_tokens.
   const requestPoints: RequestPoint[] = requests.map((r) => ({
@@ -136,8 +146,16 @@ export default function SessionDetailPage() {
     contextTokens: r.contextTokens,
   }));
 
-  // Model label for the ceiling note.
-  const modelLabel = session.model ?? requests[0]?.model ?? "claude";
+  // Ceiling comes from the model that carried the largest prompt, not the
+  // session's first turn: Claude Code opens many sessions with a Haiku title
+  // call, whose 200K window would understate a 1M-window session fivefold.
+  const peakRequest = requests.reduce<Request | null>(
+    (peak, r) => (peak === null || r.contextTokens > peak.contextTokens ? r : peak),
+    null,
+  );
+  const ceilingModel = peakRequest?.model ?? session.model ?? null;
+  const modelLabel = ceilingModel ?? "claude";
+  const ceiling = contextWindow(ceilingModel);
 
   // ── Render ────────────────────────────────────────────────────────────────
   return (
@@ -152,9 +170,9 @@ export default function SessionDetailPage() {
       {/* Context usage chart card (Req 5.3–5.9) */}
       <ContextChartCard
         requests={requestPoints}
-        compactions={compactions}
-        ceiling={200_000}
-        ceilingLabel="200,000 tokens"
+        compactions={compactionEvents}
+        ceiling={ceiling}
+        ceilingLabel={`${ceiling.toLocaleString()} tokens`}
         modelLabel={modelLabel}
       />
 
@@ -164,6 +182,7 @@ export default function SessionDetailPage() {
         rawCounts={rawCounts}
         onToggleRawCounts={setRawCounts}
         loading={requestsLoading}
+        transcriptPath={transcriptPath}
       />
     </div>
   );

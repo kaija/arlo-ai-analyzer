@@ -1,5 +1,5 @@
 import type { Session, StopReason, ContextHealthRow, SkillRow } from "../types";
-import { estimatedCostUsd } from "../pricing";
+import { contextWindow, estimatedCostUsd } from "../pricing";
 
 // ---------------------------------------------------------------------------
 // Cache
@@ -26,19 +26,20 @@ export function cacheHitRate(sessions: Session[]): number {
 }
 
 /**
- * Returns the total cache-write tokens split into two buckets.
- * write5m uses cache_creation_tokens as the proxy.
- * write1h is 0 until the backend distinguishes 5-min vs 1-hour writes.
+ * Returns the total cache-write tokens split by TTL tier. The two tiers are
+ * priced 1.6x apart, so the split is what makes the cache-efficiency card
+ * actionable rather than decorative.
  *
  * Validates: Requirements 6.5
- * TODO: needs backend — cache_creation_tokens should be split into write5m / write1h
  */
 export function cacheWriteSplit(sessions: Session[]): { write5m: number; write1h: number } {
   let write5m = 0;
+  let write1h = 0;
   for (const s of sessions) {
-    write5m += s.cache_creation_tokens;
+    write5m += s.cache_write_5m;
+    write1h += s.cache_write_1h;
   }
-  return { write5m, write1h: 0 }; // TODO: needs backend
+  return { write5m, write1h };
 }
 
 // ---------------------------------------------------------------------------
@@ -162,9 +163,11 @@ export function projectedMonthEndSpend(sessions: Session[]): number {
 export function stopReasonBreakdown(sessions: Session[]): Record<StopReason, number> {
   return {
     end_turn: sessions.length, // TODO: needs backend
-    tool_use: 0,              // TODO: needs backend
-    max_tokens: 0,            // TODO: needs backend
-    refusal: 0,               // TODO: needs backend
+    tool_use: 0,               // TODO: needs backend
+    max_tokens: 0,             // TODO: needs backend
+    stop_sequence: 0,          // TODO: needs backend
+    refusal: 0,                // TODO: needs backend
+    other: 0,                  // TODO: needs backend
   };
 }
 
@@ -183,14 +186,15 @@ export function maxTokensCount(_sessions: Session[]): number {
 // Context health
 // ---------------------------------------------------------------------------
 
-// Anthropic Claude models have a 200 000-token context window.
-// Used as the denominator for context-fill percentage.
-const CONTEXT_WINDOW = 200_000;
-
 /**
- * Returns sessions whose estimated context fill (as a percentage) exceeds
- * the given threshold. Context fill is approximated as:
- *   (input_tokens + cache_read_tokens) / CONTEXT_WINDOW * 100
+ * Returns sessions whose context fill exceeds the given threshold, as:
+ *   peak_context_tokens / contextWindow(peak_context_model) * 100
+ *
+ * Both halves used to be wrong: the numerator summed every request's tokens
+ * (cumulative traffic, so a long session read as thousands of percent) and the
+ * denominator was hard-coded to 200K even for 1M-window models. The window
+ * comes from the model that carried the peak request, not the session's first
+ * turn — that one is often a 200K-window Haiku title call.
  *
  * Results are sorted by contextPct descending.
  *
@@ -202,12 +206,15 @@ export function contextHealthSessions(
 ): ContextHealthRow[] {
   return sessions
     .map((s) => {
-      const contextPct = ((s.input_tokens + s.cache_read_tokens) / CONTEXT_WINDOW) * 100;
+      const contextPct =
+        (s.peak_context_tokens /
+          contextWindow(s.peak_context_model ?? s.model)) *
+        100;
       return {
         sessionId: s.session_id,
         sessionName: s.project || s.session_id,
         contextPct,
-        tokens: s.input_tokens + s.cache_read_tokens,
+        tokens: s.peak_context_tokens,
       } satisfies ContextHealthRow;
     })
     .filter((row) => row.contextPct > threshold)

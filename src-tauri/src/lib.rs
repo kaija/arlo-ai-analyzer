@@ -1,6 +1,6 @@
 use std::sync::Mutex;
 use tauri::{Emitter, Manager};
-use usage_core::{Db, Session, SessionRequest};
+use usage_core::{Db, Session, SessionDetail};
 
 struct AppState {
     db: Mutex<Db>,
@@ -13,8 +13,26 @@ fn list_sessions(state: tauri::State<AppState>) -> Result<Vec<Session>, String> 
 }
 
 #[tauri::command]
-fn get_session_requests(session_id: String) -> Result<Vec<SessionRequest>, String> {
-    usage_core::get_session_requests(&session_id).map_err(|e| e.to_string())
+fn get_session_detail(session_id: String) -> Result<SessionDetail, String> {
+    usage_core::get_session_detail(&session_id).map_err(|e| e.to_string())
+}
+
+/// Empty the cache and rebuild it from the transcripts on disk.
+///
+/// The cache is derived data — every row here is recomputed from
+/// `~/.claude/projects`. Resetting is the way to drop rows for transcripts
+/// that were deleted, and to pick up a pricing or parser change without
+/// waiting for a schema bump.
+#[tauri::command]
+fn reset_database(state: tauri::State<AppState>, app: tauri::AppHandle) -> Result<usize, String> {
+    let sessions = usage_core::scan_all().map_err(|e| e.to_string())?;
+    {
+        let db = state.db.lock().map_err(|e| e.to_string())?;
+        db.clear_sessions().map_err(|e| e.to_string())?;
+        db.upsert_sessions(&sessions).map_err(|e| e.to_string())?;
+    }
+    let _ = app.emit("usage-updated", ());
+    Ok(sessions.len())
 }
 
 #[tauri::command]
@@ -39,9 +57,16 @@ pub fn run() {
 
             app.manage(AppState { db: Mutex::new(db) });
 
-            if let Some(root) = usage_core::sources::claude_code::default_root() {
+            let roots: Vec<_> = [
+                usage_core::sources::claude_code::default_root(),
+                usage_core::sources::codex_cli::default_root(),
+            ]
+            .into_iter()
+            .flatten()
+            .collect();
+            if !roots.is_empty() {
                 let handle = app.handle().clone();
-                let watcher = usage_core::watcher::watch_paths(&[root], move || {
+                let watcher = usage_core::watcher::watch_paths(&roots, move || {
                     let Ok(sessions) = usage_core::scan_all() else {
                         return;
                     };
@@ -61,7 +86,7 @@ pub fn run() {
 
             Ok(())
         })
-        .invoke_handler(tauri::generate_handler![list_sessions, get_session_requests, rescan])
+        .invoke_handler(tauri::generate_handler![list_sessions, get_session_detail, rescan, reset_database])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }

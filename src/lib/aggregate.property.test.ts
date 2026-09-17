@@ -1,4 +1,4 @@
-import { describe, it } from "vitest";
+import { describe, expect, it } from "vitest";
 import * as fc from "fast-check";
 import { sumSessions, activeDays, bucketByDay, bucketByWeek, bucketByHour } from "./aggregate";
 import { totalTokens, estimatedCostUsd } from "../pricing";
@@ -55,8 +55,14 @@ const sessionArb: fc.Arbitrary<Session> = fc.record<Session>({
   input_tokens: fc.nat({ max: 200_000 }),
   output_tokens: fc.nat({ max: 20_000 }),
   cache_creation_tokens: fc.nat({ max: 100_000 }),
+  cache_write_5m: fc.nat({ max: 100_000 }),
+  cache_write_1h: fc.nat({ max: 100_000 }),
   cache_read_tokens: fc.nat({ max: 100_000 }),
+  peak_context_tokens: fc.nat({ max: 1_000_000 }),
+  peak_context_model: modelArb,
+  compaction_count: fc.nat({ max: 10 }),
   message_count: fc.nat({ max: 500 }),
+  cost_usd: fc.nat({ max: 1_000 }),
 });
 
 // Epoch bounds for the date range arbitrary (2023-01-01 – 2024-12-01 UTC)
@@ -234,5 +240,57 @@ describe("Property 5: Bucketing produces the correct bar count", () => {
       ),
       { numRuns: 100 },
     );
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Cache-write tiers must stay distinct through bucketing
+//
+// Regression: tokenKindBreakdown used to fold all cache creation into
+// cache_write_5m and hard-code cache_write_1h to 0, so the dashboard's token
+// pills read "5m 3% / 1h 0%" when the real split was the other way round.
+// ---------------------------------------------------------------------------
+
+describe("token-kind bucketing keeps the 5m and 1h cache tiers apart", () => {
+  const session: Session = {
+    tool: "claude_code",
+    session_id: "s1",
+    project: "/tmp/p",
+    started_at: "2026-08-19T10:00:00.000Z",
+    model: "claude-sonnet-5",
+    input_tokens: 100,
+    output_tokens: 200,
+    cache_creation_tokens: 1_000,
+    cache_write_5m: 250,
+    cache_write_1h: 750,
+    cache_read_tokens: 5_000,
+    peak_context_tokens: 6_000,
+    peak_context_model: "claude-sonnet-5",
+    compaction_count: 0,
+    message_count: 3,
+    cost_usd: 1,
+  };
+
+  it("reports each tier from its own field", () => {
+    const [bucket] = bucketByDay([session], {
+      start: "2026-08-19T00:00:00.000Z",
+      end: "2026-08-19T23:59:59.000Z",
+    });
+
+    expect(bucket.byTokenKind.cache_write_5m).toBe(250);
+    expect(bucket.byTokenKind.cache_write_1h).toBe(750);
+    expect(bucket.byTokenKind.input).toBe(100);
+    expect(bucket.byTokenKind.output).toBe(200);
+    expect(bucket.byTokenKind.cache_read).toBe(5_000);
+  });
+
+  it("does not double-count cache creation into a tier", () => {
+    const [bucket] = bucketByDay([session], {
+      start: "2026-08-19T00:00:00.000Z",
+      end: "2026-08-19T23:59:59.000Z",
+    });
+    const writes =
+      bucket.byTokenKind.cache_write_5m + bucket.byTokenKind.cache_write_1h;
+    expect(writes).toBe(session.cache_creation_tokens);
   });
 });

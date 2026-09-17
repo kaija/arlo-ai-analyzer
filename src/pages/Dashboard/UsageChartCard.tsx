@@ -21,7 +21,11 @@ interface UsageChartCardProps {
  * UsageChartCard — wraps StackedBarChart with the chart card chrome:
  *   - Card header with granularity/drill breadcrumb
  *   - The chart itself (drillable at day granularity)
- *   - TokenKindPills below the chart when measure === "tokens"
+ *   - TokenKindPills below the chart when the bars are actually stacked by
+ *     token kind. Showing them under a model-stacked chart put a token-kind
+ *     legend under model-coloured bars (the same orange meaning two different
+ *     things) and the toggles were inert — `kindOn` only filters the
+ *     tokenkind stack.
  *
  * Requirements: 3.3, 3.4, 3.5, 3.6, 3.9, 3.10, 3.11, 3.12
  */
@@ -30,7 +34,7 @@ export function UsageChartCard({
   dims,
   measure,
   granularity,
-  stackBy: _stackBy,
+  stackBy,
   kindOn,
   kindTotals,
   drillDayIndex,
@@ -76,7 +80,7 @@ export function UsageChartCard({
         />
       </div>
 
-      {measure === "tokens" && (
+      {measure === "tokens" && stackBy === "tokenkind" && (
         <TokenKindPills
           kindOn={kindOn}
           totals={kindTotals}

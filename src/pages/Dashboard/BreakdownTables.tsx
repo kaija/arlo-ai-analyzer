@@ -2,7 +2,6 @@ import type { Session, Measure } from "../../types";
 import {
   breakdownByModel,
   breakdownByProject,
-  breakdownByBranch,
 } from "../../lib/aggregate";
 import { BreakdownTable } from "./BreakdownTable";
 
@@ -12,13 +11,13 @@ interface BreakdownTablesProps {
   /** Active measure — passed through to each table to highlight the right column. */
   measure: Measure;
   /**
-   * Currently-active entity filter, or null. Format: "model:<name>" | "project:<name>" |
-   * "branch:<name>" so the correct table knows which row to highlight.
+   * Currently-active entity filter, or null. Format: "model:<name>" | "project:<name>"
+   * so the correct table knows which row to highlight.
    */
-  entityFilter: { kind: "model" | "project" | "branch"; name: string } | null;
+  entityFilter: { kind: "model" | "project"; name: string } | null;
   /** Called when the user clicks a row or clears a filter. */
   onEntityFilter: (
-    filter: { kind: "model" | "project" | "branch"; name: string } | null
+    filter: { kind: "model" | "project"; name: string } | null
   ) => void;
 }
 
@@ -40,7 +39,6 @@ export function BreakdownTables({
 }: BreakdownTablesProps) {
   const modelRows = breakdownByModel(sessions);
   const projectRows = breakdownByProject(sessions);
-  const branchRows = breakdownByBranch(sessions);
 
   return (
     <div className="tri-tables">
@@ -66,18 +64,6 @@ export function BreakdownTables({
         }
         onEntityFilter={(name) =>
           onEntityFilter(name !== null ? { kind: "project", name } : null)
-        }
-      />
-
-      <BreakdownTable
-        title="By branch"
-        rows={branchRows}
-        measure={measure}
-        entityFilter={
-          entityFilter?.kind === "branch" ? entityFilter.name : null
-        }
-        onEntityFilter={(name) =>
-          onEntityFilter(name !== null ? { kind: "branch", name } : null)
         }
       />
     </div>
