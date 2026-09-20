@@ -1,0 +1,13 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "bundle": {
+    "targets": ["app"],
+    "macOS": {
+      "bundleVersion": "1",
+      "entitlements": "app-store.entitlements.plist",
+      "hardenedRuntime": true,
+      "infoPlist": "Info.appstore.plist",
+      "signingIdentity": "3rd Party Mac Developer Application: Chang KaiChieh (H2ZM466J6A)"
+    }
+  }
+}
