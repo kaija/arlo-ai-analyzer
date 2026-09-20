@@ -3,7 +3,7 @@
   "bundle": {
     "targets": ["app"],
     "macOS": {
-      "bundleVersion": "1",
+      "bundleVersion": "2",
       "entitlements": "app-store.entitlements.plist",
       "hardenedRuntime": true,
       "infoPlist": "Info.appstore.plist",
