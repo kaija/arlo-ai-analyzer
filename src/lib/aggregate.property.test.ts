@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import * as fc from "fast-check";
-import { sumSessions, activeDays, bucketByDay, bucketByWeek, bucketByHour } from "./aggregate";
+import { sumSessions, activeDays, bucketByDay, bucketByWeek, bucketByHour, localDateKey } from "./aggregate";
 import { totalTokens, estimatedCostUsd } from "../pricing";
 import type { Session, ToolKind } from "../types";
 
@@ -124,11 +124,11 @@ describe("Property 4: Dashboard stat tiles reflect session totals", () => {
     );
   });
 
-  it("active days equals count of distinct calendar dates in started_at", () => {
+  it("active days equals count of distinct local calendar dates", () => {
     fc.assert(
       fc.property(fc.array(sessionArb, { minLength: 0, maxLength: 100 }), (sessions) => {
         const result = activeDays(sessions);
-        const expected = new Set(sessions.map((s) => s.started_at.slice(0, 10))).size;
+        const expected = new Set(sessions.map((s) => localDateKey(s.started_at))).size;
         return result === expected;
       }),
       { numRuns: 100 },
@@ -151,7 +151,8 @@ function countDaysInRange(start: string, end: string): number {
 
 /** Returns ISO week key in "YYYY-WNN" format, mirroring the logic in aggregate.ts. */
 function isoWeekKey(dateStr: string): string {
-  const d = new Date(dateStr.slice(0, 10) + "T00:00:00Z");
+  const [localYear, localMonth, localDay] = localDateKey(dateStr).split("-").map(Number);
+  const d = new Date(Date.UTC(localYear, localMonth - 1, localDay));
   const dayOfWeek = d.getUTCDay() === 0 ? 7 : d.getUTCDay();
   const thursday = new Date(d);
   thursday.setUTCDate(d.getUTCDate() + (4 - dayOfWeek));
@@ -170,7 +171,7 @@ function distinctWeeksInRange(sessions: Session[], start: string, end: string): 
   const weeks = new Set(
     sessions
       .filter((s) => {
-        const day = s.started_at.slice(0, 10);
+        const day = localDateKey(s.started_at);
         return day >= startDay && day <= endDay;
       })
       .map((s) => isoWeekKey(s.started_at)),

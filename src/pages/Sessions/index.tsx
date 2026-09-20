@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useSessionsContext } from "../../context/SessionsContext";
-import { filterByDateRange } from "../../lib/aggregate";
+import { filterByDateRange, localDateKey } from "../../lib/aggregate";
 import { totalTokens, estimatedCostUsd } from "../../pricing";
 import { contextPct } from "./SessionsTable";
 import type { Measure, Session } from "../../types";
@@ -61,7 +61,7 @@ interface FilterChipDef {
 function daysAgoIso(daysAgo: number): string {
   const d = new Date();
   d.setDate(d.getDate() - daysAgo);
-  return d.toISOString().slice(0, 10);
+  return localDateKey(d);
 }
 
 /** Derive the [start, end] date range from the active preset. */
@@ -70,7 +70,7 @@ function presetToRange(
   customStart?: string,
   customEnd?: string,
 ): { start: string; end: string } {
-  const end = new Date().toISOString().slice(0, 10);
+  const end = localDateKey(new Date());
   switch (preset) {
     case "7d":
       return { start: daysAgoIso(6), end };
@@ -316,7 +316,7 @@ export default function SessionsPage() {
             setDatePreset(preset);
             if (preset === "custom") {
               if (!customStart || !customEnd) {
-                const today = new Date().toISOString().slice(0, 10);
+                const today = localDateKey(new Date());
                 setCustomStart(daysAgoIso(29)); // seed with last-30-days range
                 setCustomEnd(today);
               }

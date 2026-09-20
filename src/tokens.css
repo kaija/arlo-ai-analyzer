@@ -31,7 +31,7 @@
   --critical: #c22a2a;
   --critical-wash: rgba(194, 42, 42, 0.08);
 
-  /* chart categorical — validated adjacent-CVD-safe order (dataviz default) */
+  /* chart categorical — broad hue spread for dense stacked bars */
   --series-1: #2a78d6; /* blue    — claude-opus-5 / input */
   --series-2: #eb6834; /* orange  — claude-sonnet-5 / cache write 1h */
   --series-3: #1baf7a; /* aqua    — claude-fable-5 / cache write 5m */
@@ -39,6 +39,11 @@
   --series-5: #e87ba4; /* magenta — claude-haiku-4-5 */
   --series-6: #008300; /* green   — claude-sonnet-4-6 */
   --series-7: #4a3aa7; /* violet  — output */
+  --series-8: #009bbf; /* cyan    — gpt-6 / astra */
+  --series-9: #d94b59; /* red     — gpt-5.6-sol */
+  --series-10: #779b00; /* lime   — gpt-5.6-terra */
+  --series-11: #9b51c7; /* purple — gpt-5.6-luna */
+  --series-12: #9a6840; /* brown  — gpt-5.5 */
   --series-recessive: #c3c2ba; /* cache-read: deliberately low-chroma, recedes */
   --series-recessive-ink: #6b6a7e;
 
@@ -80,6 +85,11 @@
   --series-5: #ee97ba;
   --series-6: #3fae3f;
   --series-7: #8f7fe0;
+  --series-8: #4cc9e8;
+  --series-9: #ff6b78;
+  --series-10: #a7d447;
+  --series-11: #c58af2;
+  --series-12: #d69a6c;
   --series-recessive: #3c3c48;
   --series-recessive-ink: #9998b3;
 
@@ -120,6 +130,11 @@
     --series-5: #ee97ba;
     --series-6: #3fae3f;
     --series-7: #8f7fe0;
+    --series-8: #4cc9e8;
+    --series-9: #ff6b78;
+    --series-10: #a7d447;
+    --series-11: #c58af2;
+    --series-12: #d69a6c;
     --series-recessive: #3c3c48;
     --series-recessive-ink: #9998b3;
   }

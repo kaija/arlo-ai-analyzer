@@ -48,7 +48,21 @@ export function UsageChartCard({
   return (
     <div className="card usage-chart-card">
       <div className="card-header usage-chart-header">
-        <h2 className="card-title">Usage over time</h2>
+        <div className="usage-chart-header-main">
+          <h2 className="card-title">Usage over time</h2>
+          <div className="legend" role="list" aria-label="Chart legend">
+            {dims.map((dim) => (
+              <div key={dim.key} className="legend-item" role="listitem">
+                <span
+                  className="legend-key"
+                  style={{ backgroundColor: dim.color }}
+                  aria-hidden="true"
+                />
+                <span>{dim.name}</span>
+              </div>
+            ))}
+          </div>
+        </div>
         <div className="usage-chart-breadcrumb">
           {isDrilled ? (
             <>

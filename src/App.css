@@ -145,7 +145,8 @@ input[type="range"].settings-range { width: 200px; accent-color: var(--accent); 
 
 /* ---------- Usage chart card wrapper ---------- */
 .usage-chart-card { display: flex; flex-direction: column; }
-.usage-chart-header { display: flex; align-items: flex-start; justify-content: space-between; padding: 16px 20px; border-bottom: 1px solid var(--border); }
+.usage-chart-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; padding: 16px 20px; border-bottom: 1px solid var(--border); }
+.usage-chart-header-main { display: flex; align-items: center; flex: 1 1 auto; flex-wrap: wrap; gap: 8px 16px; min-width: 0; }
 .usage-chart-breadcrumb { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--muted); }
 .usage-chart-granularity-label { font-size: 12px; color: var(--muted); }
 .breadcrumb-back { background: none; border: none; color: var(--accent); font-size: 12px; font-weight: 600; cursor: pointer; padding: 0; }

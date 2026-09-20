@@ -16,6 +16,7 @@ import {
   bucketByDay,
   bucketByWeek,
   bucketByHour,
+  localDateKey,
 } from "../../lib/aggregate";
 import { isModelPriced, modelColor } from "../../pricing";
 import { TOKEN_KIND_COLORS } from "../../charts/MiniStackBar";
@@ -38,16 +39,16 @@ import { ScanState } from "./ScanState";
 // Date preset helpers
 // ---------------------------------------------------------------------------
 
-type DatePreset = "7d" | "30d" | "90d" | "all" | "custom";
+type DatePreset = "7d" | "30d" | "90d" | "mtd" | "all" | "custom";
 
-function dateRangeForPreset(
+export function dateRangeForPreset(
   preset: DatePreset,
   sessions?: { started_at: string }[],
   customStart?: string,
   customEnd?: string,
 ): DateRange {
   const today = new Date();
-  const end = today.toISOString().slice(0, 10);
+  const end = localDateKey(today);
 
   if (preset === "custom") {
     // Use explicit custom range when provided
@@ -56,7 +57,7 @@ function dateRangeForPreset(
     }
     // Fallback: same as "all" until the user picks dates
     if (sessions && sessions.length > 0) {
-      const earliest = sessions.map((s) => s.started_at.slice(0, 10)).sort()[0];
+      const earliest = sessions.map((s) => localDateKey(s.started_at)).sort()[0];
       return { start: earliest, end };
     }
     return { start: end, end };
@@ -66,17 +67,22 @@ function dateRangeForPreset(
     // Use the earliest session date so we don't generate thousands of empty buckets
     if (sessions && sessions.length > 0) {
       const earliest = sessions
-        .map((s) => s.started_at.slice(0, 10))
+        .map((s) => localDateKey(s.started_at))
         .sort()[0];
       return { start: earliest, end };
     }
     return { start: end, end }; // no sessions — single-day range (no buckets)
   }
 
+  if (preset === "mtd") {
+    const start = new Date(today.getFullYear(), today.getMonth(), 1);
+    return { start: localDateKey(start), end };
+  }
+
   const days = preset === "7d" ? 7 : preset === "30d" ? 30 : 90;
   const start = new Date(today);
   start.setDate(today.getDate() - (days - 1));
-  return { start: start.toISOString().slice(0, 10), end };
+  return { start: localDateKey(start), end };
 }
 
 // ---------------------------------------------------------------------------
@@ -99,15 +105,28 @@ const ALL_TOKEN_KINDS: TokenKind[] = [
   "cache_read",
 ];
 
-// Unique model colors keyed by model string (computed once per session list)
-function modelDims(sessions: { model: string | null }[]): Dimension[] {
+const CHART_SERIES_COLORS = Array.from(
+  { length: 12 },
+  (_, index) => `var(--series-${index + 1})`,
+);
+
+// Unique model colors keyed by model string (computed once per session list).
+// Prefer the cross-app family color, then resolve collisions inside this chart
+// so two stacked segments never become visually indistinguishable.
+export function modelDims(sessions: { model: string | null }[]): Dimension[] {
   const seen = new Set<string>();
+  const usedColors = new Set<string>();
   const dims: Dimension[] = [];
   for (const s of sessions) {
     const m = s.model ?? "unknown";
     if (!seen.has(m)) {
       seen.add(m);
-      dims.push({ key: m, name: m, color: modelColor(m) });
+      const preferredColor = modelColor(m);
+      const color = usedColors.has(preferredColor)
+        ? CHART_SERIES_COLORS.find((candidate) => !usedColors.has(candidate)) ?? preferredColor
+        : preferredColor;
+      usedColors.add(color);
+      dims.push({ key: m, name: m, color });
     }
   }
   return dims;
@@ -116,20 +135,15 @@ function modelDims(sessions: { model: string | null }[]): Dimension[] {
 function projectDims(sessions: { project: string }[]): Dimension[] {
   const seen = new Set<string>();
   const dims: Dimension[] = [];
-  const COLORS = [
-    "var(--series-1)",
-    "var(--series-2)",
-    "var(--series-3)",
-    "var(--series-4)",
-    "var(--series-5)",
-    "var(--series-6)",
-    "var(--series-7)",
-  ];
   let idx = 0;
   for (const s of sessions) {
     if (!seen.has(s.project)) {
       seen.add(s.project);
-      dims.push({ key: s.project, name: s.project, color: COLORS[idx % COLORS.length] });
+      dims.push({
+        key: s.project,
+        name: s.project,
+        color: CHART_SERIES_COLORS[idx % CHART_SERIES_COLORS.length],
+      });
       idx++;
     }
   }
@@ -366,10 +380,10 @@ export default function DashboardPage() {
     if (preset === "custom") {
       // Open popover; seed with current dateRange if no custom range yet
       if (!customStart || !customEnd) {
-        const today = new Date().toISOString().slice(0, 10);
+        const today = localDateKey(new Date());
         const fallbackStart =
           sessions.length > 0
-            ? sessions.map((s) => s.started_at.slice(0, 10)).sort()[0]
+            ? sessions.map((s) => localDateKey(s.started_at)).sort()[0]
             : today;
         setCustomStart(fallbackStart);
         setCustomEnd(today);
@@ -438,7 +452,7 @@ export default function DashboardPage() {
       )}
 
       {/* Filter bar — matches mockup layout exactly:
-          [All time ▾] [7d 30d 90d All Custom] | [Tokens Requests Cost] | [Hour Day Week] [Stack by: Model ▾]  ···grow···  [+ Filter] */}
+          [All time ▾] [7d 30d 90d MTD All Custom] | [Tokens Requests Cost] | [Hour Day Week] [Stack by: Model ▾]  ···grow···  [+ Filter] */}
       <FilterBar>
         {/* Date range field dropdown */}
         <div className="field date-range-field-wrap" id="dateRangeField">
@@ -450,6 +464,7 @@ export default function DashboardPage() {
              datePreset === "7d"    ? "Last 7 days"   :
              datePreset === "30d"   ? "Last 30 days"  :
              datePreset === "90d"   ? "Last 90 days"  :
+             datePreset === "mtd"   ? "Month to date" :
              (customStart && customEnd) ? `${customStart} – ${customEnd}` : "Custom"}
           </span>
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -473,6 +488,7 @@ export default function DashboardPage() {
             { value: "7d", label: "7d" },
             { value: "30d", label: "30d" },
             { value: "90d", label: "90d" },
+            { value: "mtd", label: "MTD" },
             { value: "all", label: "All" },
             { value: "custom", label: "Custom" },
           ]}

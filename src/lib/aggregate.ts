@@ -43,14 +43,35 @@ export function groupBy(sessions: Session[], keyFn: (s: Session) => string): Rec
 // Date range filter
 // ---------------------------------------------------------------------------
 
+/** Return the calendar date for a timestamp in the user's device time zone. */
+export function localDateKey(value: string | Date): string {
+  const date = value instanceof Date ? value : new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return typeof value === "string" ? value.slice(0, 10) : "";
+  }
+
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+function localHourKey(timestamp: string): string {
+  const date = new Date(timestamp);
+  if (Number.isNaN(date.getTime())) {
+    const separator = timestamp.indexOf("T") >= 0 ? "T" : " ";
+    return (timestamp.split(separator)[1] ?? "00:00:00").slice(0, 2);
+  }
+  return String(date.getHours()).padStart(2, "0");
+}
+
 /**
  * Returns sessions whose `started_at` falls within [start, end] (inclusive,
- * ISO date string prefix comparison — works for both full ISO timestamps and
- * "YYYY-MM-DD" strings).
+ * using the user's local calendar date.
  */
 export function filterByDateRange(sessions: Session[], start: string, end: string): Session[] {
   return sessions.filter((s) => {
-    const day = s.started_at.slice(0, 10);
+    const day = localDateKey(s.started_at);
     return day >= start.slice(0, 10) && day <= end.slice(0, 10);
   });
 }
@@ -61,7 +82,7 @@ export function filterByDateRange(sessions: Session[], start: string, end: strin
 
 /** Count of distinct calendar dates across all sessions. */
 export function activeDays(sessions: Session[]): number {
-  const days = new Set(sessions.map((s) => s.started_at.slice(0, 10)));
+  const days = new Set(sessions.map((s) => localDateKey(s.started_at)));
   return days.size;
 }
 
@@ -92,15 +113,15 @@ function tokenKindBreakdown(sessions: Session[]): Record<TokenKind, number> {
  */
 export function bucketByDay(sessions: Session[], range: DateRange): DayBucket[] {
   const filtered = filterByDateRange(sessions, range.start, range.end);
-  const grouped = groupBy(filtered, (s) => s.started_at.slice(0, 10));
+  const grouped = groupBy(filtered, (s) => localDateKey(s.started_at));
 
-  // Build a complete list of calendar days in the range
+  // Build a complete list of calendar days in the user's local time zone.
   const days: string[] = [];
-  const cursor = new Date(range.start.slice(0, 10) + "T00:00:00Z");
+  const cursor = new Date(range.start.slice(0, 10) + "T00:00:00");
   const endDay = range.end.slice(0, 10);
-  while (cursor.toISOString().slice(0, 10) <= endDay) {
-    days.push(cursor.toISOString().slice(0, 10));
-    cursor.setUTCDate(cursor.getUTCDate() + 1);
+  while (localDateKey(cursor) <= endDay) {
+    days.push(localDateKey(cursor));
+    cursor.setDate(cursor.getDate() + 1);
   }
 
   return days.map((date) => {
@@ -120,10 +141,9 @@ export function bucketByDay(sessions: Session[], range: DateRange): DayBucket[] 
 
     return {
       date,
-      label: new Date(date + "T00:00:00Z").toLocaleDateString("en-US", {
+      label: new Date(date + "T00:00:00").toLocaleDateString("en-US", {
         month: "short",
         day: "numeric",
-        timeZone: "UTC",
       }),
       tokens: totals.tokens,
       requests: totals.messages,
@@ -142,7 +162,8 @@ export function bucketByDay(sessions: Session[], range: DateRange): DayBucket[] 
 
 /** Returns ISO week string in format "YYYY-WNN" (e.g., "2024-W12"). */
 function isoWeekKey(dateStr: string): string {
-  const d = new Date(dateStr.slice(0, 10) + "T00:00:00Z");
+  const [localYear, localMonth, localDay] = localDateKey(dateStr).split("-").map(Number);
+  const d = new Date(Date.UTC(localYear, localMonth - 1, localDay));
   // ISO week: week containing the first Thursday of the year is week 1
   const dayOfWeek = d.getUTCDay() === 0 ? 7 : d.getUTCDay(); // Mon=1, Sun=7
   const thursday = new Date(d);
@@ -207,15 +228,8 @@ export function bucketByWeek(sessions: Session[], range: DateRange): WeekBucket[
  */
 export function bucketByHour(sessions: Session[], dayDate: string): HourBucket[] {
   const dayPrefix = dayDate.slice(0, 10);
-  const daysessions = sessions.filter((s) => s.started_at.slice(0, 10) === dayPrefix);
-  const grouped = groupBy(daysessions, (s) => {
-    // Extract hour from ISO timestamp; handle both "YYYY-MM-DDTHH:..." and
-    // "YYYY-MM-DD HH:..." formats.
-    const ts = s.started_at;
-    const sep = ts.indexOf("T") >= 0 ? "T" : " ";
-    const timePart = ts.split(sep)[1] ?? "00:00:00";
-    return timePart.slice(0, 2); // "HH"
-  });
+  const daysessions = sessions.filter((s) => localDateKey(s.started_at) === dayPrefix);
+  const grouped = groupBy(daysessions, (s) => localHourKey(s.started_at));
 
   return Array.from({ length: 24 }, (_, hour) => {
     const key = String(hour).padStart(2, "0");

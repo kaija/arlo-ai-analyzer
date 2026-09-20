@@ -206,7 +206,7 @@ export function StackedBarChart({
         {/* Tooltip */}
         {tooltip.visible && activeBucket && (
           <div
-            className="chart-tooltip"
+            className="chart-tooltip show"
             role="tooltip"
             style={{
               left: tooltip.flipLeft ? "auto" : `${tooltip.x}px`,

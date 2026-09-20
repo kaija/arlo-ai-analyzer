@@ -282,7 +282,7 @@ export function contextWindow(model: string | null): number {
 // ---------------------------------------------------------------------------
 // Model color mapping
 // Returns the CSS variable reference (e.g. "var(--series-1)") for a model.
-// Series 1–7 are assigned by model family so the same family always gets the
+// Series 1–12 are assigned by model family so the same family always gets the
 // same color across all charts.
 // ---------------------------------------------------------------------------
 
@@ -292,6 +292,11 @@ export function contextWindow(model: string | null): number {
 // series-1 fallback — the same blue as Opus, which is why a mixed-model chart
 // came out one colour. Specific generations are matched before family.
 const MODEL_COLOR_MAP: Array<{ pattern: RegExp; series: number }> = [
+  { pattern: /gpt-6|astra/i,                     series: 8 },
+  { pattern: /gpt-5[.]6-sol/i,                   series: 9 },
+  { pattern: /gpt-5[.]6-terra/i,                 series: 10 },
+  { pattern: /gpt-5[.]6-luna/i,                  series: 11 },
+  { pattern: /gpt-5[.]5/i,                       series: 12 },
   { pattern: /fable|mythos/i,                    series: 3 },
   { pattern: /opus-5|opus-4[-.]6|opus-4[-.]7/i,  series: 1 },
   { pattern: /opus-4[-.]8/i,                     series: 4 },
@@ -311,9 +316,15 @@ export function modelColor(model: string): string {
       return `var(--series-${series})`;
     }
   }
-  // Unknown model — a low-chroma neutral, so it can't be mistaken for a
-  // recognised family.
-  return "var(--series-recessive)";
+  // Keep unrecognised models categorical too. A stable hash preserves the
+  // colour between views without collapsing every new model into one grey.
+  let hash = 2166136261;
+  for (let i = 0; i < model.length; i++) {
+    hash ^= model.charCodeAt(i);
+    hash = Math.imul(hash, 16777619);
+  }
+  const fallbackSeries = [8, 9, 10, 11, 12];
+  return `var(--series-${fallbackSeries[(hash >>> 0) % fallbackSeries.length]})`;
 }
 
 // ---------------------------------------------------------------------------

@@ -1,5 +1,6 @@
 import type { Session, StopReason, ContextHealthRow, SkillRow } from "../types";
 import { contextWindow, estimatedCostUsd } from "../pricing";
+import { localDateKey } from "./aggregate";
 
 // ---------------------------------------------------------------------------
 // Cache
@@ -99,7 +100,7 @@ export function rightsizingSavingsUsd(sessions: Session[], outputThreshold: numb
 
 /** Returns the ISO date string (YYYY-MM) for the current calendar month. */
 function currentYearMonth(): string {
-  return new Date().toISOString().slice(0, 7);
+  return localDateKey(new Date()).slice(0, 7);
 }
 
 /**
@@ -111,7 +112,7 @@ function currentYearMonth(): string {
 export function monthToDateSpend(sessions: Session[]): number {
   const month = currentYearMonth();
   return sessions
-    .filter((s) => s.started_at.slice(0, 7) === month)
+    .filter((s) => localDateKey(s.started_at).slice(0, 7) === month)
     .reduce((acc, s) => acc + estimatedCostUsd(s), 0);
 }
 
@@ -123,12 +124,12 @@ export function monthToDateSpend(sessions: Session[]): number {
  */
 export function sevenDayBurnRate(sessions: Session[]): number {
   const today = new Date();
-  // Build a set of the last 7 ISO date strings
+  // Build the last seven user-local calendar dates.
   const cutoffDate = new Date(today);
   cutoffDate.setDate(today.getDate() - 6); // 6 days ago → 7 days total including today
-  const cutoffStr = cutoffDate.toISOString().slice(0, 10);
+  const cutoffStr = localDateKey(cutoffDate);
 
-  const recentSessions = sessions.filter((s) => s.started_at.slice(0, 10) >= cutoffStr);
+  const recentSessions = sessions.filter((s) => localDateKey(s.started_at) >= cutoffStr);
   const totalSpend = recentSessions.reduce((acc, s) => acc + estimatedCostUsd(s), 0);
   return totalSpend / 7;
 }
