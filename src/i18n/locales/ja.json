@@ -35,6 +35,20 @@
       "invalidNumber": "0以上の数値を入力してください。",
       "perMonth": "/ 月"
     },
+    "dailySpendAlert": {
+      "title": "1日の支出アラート",
+      "subtitle": "今日の支出が上限を超えると、メニューバーのアイコンからポップアップでお知らせします。日付はお使いのタイムゾーンに従います。",
+      "enabled": "ポップアップ通知",
+      "enabledHint": "システム通知ではなく、メニューバーのアイコンの下に表示されます。各レベルは1日1回のみ通知します。",
+      "dailyBudget": "1日の予算",
+      "dailyBudgetHint": "100% のレベルです。0 にするとアラートがオフになります。",
+      "perDay": "/ 日",
+      "warnAt": "事前警告",
+      "warnAtHint": "今日の支出が1日の予算のこの割合に達したら警告します。",
+      "today": "今日の支出：{{spent}} / {{budget}}",
+      "resetsAt": "現地時間の午前0時にリセット · {{timeZone}}",
+      "preview": "ポップアップをプレビュー"
+    },
     "notifications": {
       "title": "通知",
       "contextAlerts": "コンテキスト警告",
@@ -82,5 +96,18 @@
       "done": "{{count}} セッションを再構築しました",
       "failed": "リセットに失敗しました"
     }
+  },
+  "tray": {
+    "heading": "Arlo · 今日",
+    "okTitle": "今日の支出",
+    "warnTitle": "今日の予算の {{pct}}% を超えました",
+    "overTitle": "1日の予算を超えました",
+    "resetsIn": "あと {{hours}} 時間 {{minutes}} 分でリセット · {{timeZone}}",
+    "alertOff": "1日の支出アラートはオフです。1日の予算を設定すると、ここにポップアップが表示されます。",
+    "dismiss": "閉じる",
+    "openDashboard": "ダッシュボードを開く",
+    "setBudget": "1日の予算を設定",
+    "menuOpen": "Arlo AI Analyzer を開く",
+    "menuQuit": "Arlo AI Analyzer を終了"
   }
 }

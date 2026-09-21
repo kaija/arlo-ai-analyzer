@@ -7,6 +7,11 @@ import {
   type ReactNode,
 } from "react";
 import type { NotificationSettings } from "../types";
+import {
+  readDailySpendAlertSettings,
+  writeDailySpendAlertSettings,
+  type DailySpendAlertSettings,
+} from "../lib/spend-alert";
 
 // ---------------------------------------------------------------------------
 // localStorage keys
@@ -158,6 +163,9 @@ interface SettingsState {
     key: keyof NotificationSettings,
     value: boolean
   ) => void;
+
+  dailySpendAlert: DailySpendAlertSettings;
+  updateDailySpendAlert: (patch: Partial<DailySpendAlertSettings>) => void;
 }
 
 // ---------------------------------------------------------------------------
@@ -183,6 +191,8 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
     useState<number>(defaultContextThreshold);
   const [notifications, setNotificationsState] =
     useState<NotificationSettings>(defaultNotifications);
+  const [dailySpendAlert, setDailySpendAlertState] =
+    useState<DailySpendAlertSettings>(readDailySpendAlertSettings);
 
   // Apply theme to DOM on first mount
   useEffect(() => {
@@ -269,6 +279,17 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
     []
   );
 
+  const updateDailySpendAlert = useCallback(
+    (patch: Partial<DailySpendAlertSettings>) => {
+      setDailySpendAlertState((prev) => {
+        const next = { ...prev, ...patch };
+        writeDailySpendAlertSettings(next);
+        return next;
+      });
+    },
+    []
+  );
+
   return (
     <SettingsContext.Provider
       value={{
@@ -286,6 +307,8 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
         notifications,
         setNotifications,
         setNotification,
+        dailySpendAlert,
+        updateDailySpendAlert,
       }}
     >
       {children}

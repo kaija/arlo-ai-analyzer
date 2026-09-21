@@ -35,6 +35,20 @@
       "invalidNumber": "請輸入 0 或以上的數字。",
       "perMonth": "/ 月"
     },
+    "dailySpendAlert": {
+      "title": "每日花費警示",
+      "subtitle": "今日花費超過設定上限時，從選單列圖示跳出提醒。日期以您的時區為準。",
+      "enabled": "跳出警示",
+      "enabledHint": "顯示在選單列圖示下方，而非系統通知。每個級距每天只提醒一次。",
+      "dailyBudget": "每日預算",
+      "dailyBudgetHint": "即 100% 的級距。設為 0 可關閉警示。",
+      "perDay": "/ 日",
+      "warnAt": "提前警告",
+      "warnAtHint": "今日花費達到每日預算的此比例時先提醒一次。",
+      "today": "今日目前：{{spent}} / {{budget}}",
+      "resetsAt": "於當地午夜重置 · {{timeZone}}",
+      "preview": "預覽警示視窗"
+    },
     "notifications": {
       "title": "通知",
       "contextAlerts": "情境警示",
@@ -82,5 +96,18 @@
       "done": "已重建 {{count}} 個 session",
       "failed": "重設失敗"
     }
+  },
+  "tray": {
+    "heading": "Arlo · 今日",
+    "okTitle": "今日花費",
+    "warnTitle": "已超過今日預算的 {{pct}}%",
+    "overTitle": "已超過每日預算",
+    "resetsIn": "{{hours}} 小時 {{minutes}} 分後重置 · {{timeZone}}",
+    "alertOff": "每日花費警示未開啟。設定每日預算後，警示會顯示在這裡。",
+    "dismiss": "關閉",
+    "openDashboard": "開啟儀表板",
+    "setBudget": "設定每日預算",
+    "menuOpen": "開啟 Arlo AI Analyzer",
+    "menuQuit": "結束 Arlo AI Analyzer"
   }
 }

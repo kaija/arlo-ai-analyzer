@@ -650,3 +650,33 @@ input.field-input { border: none; background: transparent; outline: none; width:
   .req-row, .req-head-row { grid-template-columns: 80px 120px 64px 1fr 80px 30px; }
   .req-row .req-cost-col, .req-head-row .req-cost-col { display: none; }
 }
+
+/* ---------- Daily spend alert — Settings status row ---------- */
+.spend-alert-status { display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; padding: 12px 14px; border-radius: 10px; background: var(--accent-wash); }
+.spend-alert-status .lbl { display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.spend-alert-status .hint { font-size: 11.5px; color: var(--muted); margin-top: 2px; }
+
+/* ---------- Tray popover — menu-bar window at #/tray ----------
+   The window is sized to .tray-popover's height, so nothing may stretch it. */
+html.tray-window, html.tray-window body { height: auto; overflow: hidden; background: var(--surface); }
+.tray-popover { display: flex; flex-direction: column; gap: 8px; padding: 12px 16px 14px; border-top: 3px solid var(--accent); cursor: default; -webkit-user-select: none; user-select: none; }
+.tray-popover.level-warn { border-top-color: var(--warning); }
+.tray-popover.level-over { border-top-color: var(--critical); }
+.tray-popover-head { display: flex; align-items: center; justify-content: space-between; font-size: 11px; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; color: var(--muted); }
+.tray-popover-close { width: 22px; height: 22px; margin-right: -6px; display: flex; align-items: center; justify-content: center; border: 0; border-radius: 6px; background: none; color: var(--muted-2); cursor: pointer; }
+.tray-popover-close:hover { background: var(--accent-wash); color: var(--accent); }
+.tray-popover-close svg { width: 12px; height: 12px; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; fill: none; }
+.tray-popover-title { font-size: 14px; font-weight: 700; line-height: 1.35; }
+.level-warn .tray-popover-title { color: var(--warning); }
+.level-over .tray-popover-title { color: var(--critical); }
+.tray-popover-amount { display: flex; align-items: baseline; gap: 6px; }
+.tray-popover-spent { font-size: 26px; font-weight: 700; letter-spacing: -0.01em; line-height: 1.15; }
+.tray-popover-budget { font-size: 13px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.tray-meter { position: relative; height: 8px; margin-top: 2px; border-radius: 999px; background: var(--border-strong); }
+.tray-meter-fill { height: 100%; border-radius: 999px; background: var(--accent); }
+.level-warn .tray-meter-fill { background: var(--warning); }
+.level-over .tray-meter-fill { background: var(--critical); }
+.tray-meter-mark { position: absolute; top: -3px; bottom: -3px; width: 2px; margin-left: -1px; border-radius: 1px; background: var(--fg); opacity: 0.3; }
+.tray-popover-meta { display: flex; justify-content: space-between; gap: 12px; font-size: 11.5px; color: var(--muted); }
+.tray-popover-hint { font-size: 12px; color: var(--muted); }
+.tray-popover-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 4px; }

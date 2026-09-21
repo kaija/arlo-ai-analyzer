@@ -1,6 +1,7 @@
 import { Outlet } from "react-router-dom";
 import { Sidebar } from "./Sidebar";
 import { Topbar } from "./Topbar";
+import { TrayBridge } from "../tray/TrayBridge";
 
 // ---------------------------------------------------------------------------
 // AppShell
@@ -13,6 +14,7 @@ import { Topbar } from "./Topbar";
 export function AppShell() {
   return (
     <div className="app-shell">
+      <TrayBridge />
       <Sidebar />
 
       <div className="main-col">

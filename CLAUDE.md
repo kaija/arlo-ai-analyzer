@@ -34,9 +34,19 @@ with vitest globals. A type error in a test only shows up in the second pass.
 **`crates/usage-core`** — all logic, no Tauri dependency, unit-testable alone.
 `UsageSource` trait (`tool()`, `scan() -> Vec<Session>`); `scan_all()` runs every source.
 
-**`src-tauri`** — thin. Four commands: `list_sessions`, `get_session_detail`, `rescan`,
+**`src-tauri`** — thin. Four data commands (plus the tray's, below): `list_sessions`, `get_session_detail`, `rescan`,
 `reset_database`. On setup it scans, upserts, then leaks a `notify` watcher on
 `~/.claude/projects` that rescans and emits `usage-updated`.
+
+**Tray (`src-tauri/src/tray.rs`)** — closing the main window hides it (and the Dock icon); the
+menu-bar icon brings it back, Quit is in its right-click menu. Left click shows the spend popover:
+a second borderless window loading `index.html#/tray` (`src/tray/TrayPopover.tsx`, rendered by
+`main.tsx` outside the providers). The backend never shows it directly — it emits
+`tray-popover-refresh`, the page reloads and answers `tray_popover_ready(height)`, then the window is
+sized, placed under the icon and shown. The daily spend alert is evaluated in the *main* window
+(`src/tray/TrayBridge.tsx`, logic in `src/lib/spend-alert.ts`) because Codex pricing only exists on
+the front end; the hidden main webview keeps running. The popover shares settings with it through
+localStorage (same origin), not React context.
 
 **Frontend** — `SessionsContext` is the only thing that talks to the backend: initial `list_sessions`
 plus a 500 ms-debounced re-fetch on `usage-updated`. Providers nest Settings → Language → Sessions.

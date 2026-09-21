@@ -1,3 +1,5 @@
+mod tray;
+
 use std::sync::Mutex;
 use tauri::{Emitter, Manager};
 use usage_core::{Db, Session, SessionDetail};
@@ -56,6 +58,7 @@ pub fn run() {
             db.upsert_sessions(&initial).map_err(|e| e.to_string())?;
 
             app.manage(AppState { db: Mutex::new(db) });
+            tray::init(app.handle())?;
 
             let roots: Vec<_> = [
                 usage_core::sources::claude_code::default_root(),
@@ -86,7 +89,25 @@ pub fn run() {
 
             Ok(())
         })
-        .invoke_handler(tauri::generate_handler![list_sessions, get_session_detail, rescan, reset_database])
-        .run(tauri::generate_context!())
-        .expect("error while running tauri application");
+        .on_window_event(tray::on_window_event)
+        .invoke_handler(tauri::generate_handler![
+            list_sessions,
+            get_session_detail,
+            rescan,
+            reset_database,
+            tray::show_tray_popover,
+            tray::tray_popover_ready,
+            tray::hide_tray_popover,
+            tray::open_main_window,
+            tray::localize_tray,
+        ])
+        .build(tauri::generate_context!())
+        .expect("error while building tauri application")
+        .run(|_app, _event| {
+            // Dock icon (or re-launching the app) while the window is hidden in the tray.
+            #[cfg(target_os = "macos")]
+            if let tauri::RunEvent::Reopen { .. } = _event {
+                tray::show_main(_app);
+            }
+        });
 }

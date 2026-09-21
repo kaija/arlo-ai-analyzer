@@ -1,6 +1,7 @@
 import { useEffect } from "react";
 import { useLocation } from "react-router-dom";
 import PlanBudgetCard from "./PlanBudgetCard";
+import { DailySpendAlertCard } from "./DailySpendAlertCard";
 import { NotificationsCard } from "./NotificationsCard";
 import { LogsDirectoryCard } from "./LogsDirectoryCard";
 import { PricingCard } from "./PricingCard";
@@ -21,11 +22,11 @@ export default function SettingsPage() {
   const location = useLocation();
 
   useEffect(() => {
-    if (location.hash !== "#pricing") return;
+    if (location.hash !== "#pricing" && location.hash !== "#daily-spend-alert") return;
 
-    const pricingCard = document.getElementById("pricing");
-    pricingCard?.scrollIntoView({ block: "start" });
-    pricingCard?.focus({ preventScroll: true });
+    const card = document.getElementById(location.hash.slice(1));
+    card?.scrollIntoView({ block: "start" });
+    card?.focus({ preventScroll: true });
   }, [location.hash]);
 
   return (
@@ -34,6 +35,7 @@ export default function SettingsPage() {
       <h1 className="sr-only">Settings</h1>
       <div className="settings-grid">
         <PlanBudgetCard />
+        <DailySpendAlertCard />
         <NotificationsCard />
         <LogsDirectoryCard />
         <PricingCard />

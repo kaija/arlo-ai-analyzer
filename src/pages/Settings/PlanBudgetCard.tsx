@@ -14,7 +14,7 @@ function validateCurrencyString(raw: string): boolean {
 }
 
 // ---------------------------------------------------------------------------
-// CurrencyRow — label col on the left, prefixed input + "/ month" on the right
+// CurrencyRow — label col on the left, prefixed input + unit ("/ month") on the right
 // ---------------------------------------------------------------------------
 
 interface CurrencyRowProps {
@@ -24,10 +24,10 @@ interface CurrencyRowProps {
   value: number;
   onChange: (value: number) => void;
   errorMessage: string;
-  perMonthLabel: string;
+  unitLabel: string;
 }
 
-function CurrencyRow({ id, label, hint, value, onChange, errorMessage, perMonthLabel }: CurrencyRowProps) {
+export function CurrencyRow({ id, label, hint, value, onChange, errorMessage, unitLabel }: CurrencyRowProps) {
   const [text, setText] = useState<string>(value.toFixed(2));
   const [error, setError] = useState<boolean>(false);
   const errorId = `${id}-error`;
@@ -75,7 +75,7 @@ function CurrencyRow({ id, label, hint, value, onChange, errorMessage, perMonthL
             aria-describedby={error ? errorId : undefined}
           />
         </div>
-        <span className="per-month">{perMonthLabel}</span>
+        <span className="per-month">{unitLabel}</span>
       </div>
       {error && (
         <p id={errorId} role="alert" className="field-error-inline" style={{ width: "100%", marginTop: -10 }}>
@@ -136,7 +136,7 @@ export default function PlanBudgetCard() {
           value={monthlyPlanPrice}
           onChange={setMonthlyPlanPrice}
           errorMessage={t("settings.planBudget.invalidNumber")}
-          perMonthLabel={t("settings.planBudget.perMonth")}
+          unitLabel={t("settings.planBudget.perMonth")}
         />
 
         <CurrencyRow
@@ -146,7 +146,7 @@ export default function PlanBudgetCard() {
           value={monthlyBudget}
           onChange={setMonthlyBudget}
           errorMessage={t("settings.planBudget.invalidNumber")}
-          perMonthLabel={t("settings.planBudget.perMonth")}
+          unitLabel={t("settings.planBudget.perMonth")}
         />
 
         <div className="form-row threshold-row">

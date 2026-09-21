@@ -35,6 +35,20 @@
       "invalidNumber": "Enter a number of 0 or more.",
       "perMonth": "/ month"
     },
+    "dailySpendAlert": {
+      "title": "Daily spend alert",
+      "subtitle": "A pop-up from the menu-bar icon when today's spend crosses your limits. Days follow your time zone.",
+      "enabled": "Pop-up alerts",
+      "enabledHint": "Shown under the menu-bar icon, not as a system notification. Each level fires once per day.",
+      "dailyBudget": "Daily budget",
+      "dailyBudgetHint": "The 100% level. Set to 0 to turn the alert off.",
+      "perDay": "/ day",
+      "warnAt": "Early warning",
+      "warnAtHint": "Warn once today's spend reaches this share of the daily budget.",
+      "today": "Today so far: {{spent}} of {{budget}}",
+      "resetsAt": "Resets at local midnight · {{timeZone}}",
+      "preview": "Preview pop-up"
+    },
     "notifications": {
       "title": "Notifications",
       "contextAlerts": "Context alerts",
@@ -82,5 +96,18 @@
       "done": "Rebuilt {{count}} sessions",
       "failed": "Reset failed"
     }
+  },
+  "tray": {
+    "heading": "Arlo · Today",
+    "okTitle": "Today's spend",
+    "warnTitle": "Past {{pct}}% of today's budget",
+    "overTitle": "Daily budget exceeded",
+    "resetsIn": "Resets in {{hours}}h {{minutes}}m · {{timeZone}}",
+    "alertOff": "Daily spend alert is off. Set a daily budget to get a pop-up here.",
+    "dismiss": "Dismiss",
+    "openDashboard": "Open dashboard",
+    "setBudget": "Set daily budget",
+    "menuOpen": "Open Arlo AI Analyzer",
+    "menuQuit": "Quit Arlo AI Analyzer"
   }
 }
