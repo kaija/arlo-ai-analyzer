@@ -12,6 +12,7 @@ import {
 } from "../lib/spend-alert";
 import { fmtCost } from "../lib/format";
 import { loadPriceCatalog } from "../lib/price-catalog";
+import { installCustomPrices, readCustomPrices } from "../lib/custom-pricing";
 
 // ---------------------------------------------------------------------------
 // TrayPopover — the page inside the menu-bar popover window (`#/tray`).
@@ -57,6 +58,7 @@ export function TrayPopover() {
     await syncAppearance();
     // Separate webview, separate module state: install the catalog here too.
     await loadPriceCatalog();
+    installCustomPrices(readCustomPrices());
     const sessions = await invoke<Session[]>("list_sessions").catch(() => [] as Session[]);
     setView({ sessions, settings: readDailySpendAlertSettings(), now: new Date() });
   }, []);

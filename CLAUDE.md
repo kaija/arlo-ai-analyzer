@@ -117,7 +117,7 @@ These are load-bearing; they were derived from real transcripts and the tests pi
   title call with a different window.
 - Compactions come from explicit `compact_boundary` records, not inferred from curve drops.
 
-### Pricing lives in four places
+### Pricing lives in four places (plus the user's custom prices)
 
 | File | Role |
 |---|---|
@@ -126,8 +126,17 @@ These are load-bearing; they were derived from real transcripts and the tests pi
 | `src/lib/price-catalog.ts` | the downloaded catalog (below) — `rateFor` tries it after the hand-written tables |
 | `src/lib/openrouter-pricing.ts` | auto-generated from the OpenRouter API — do not hand-edit; bundled fallback when there's no downloaded catalog. Refresh with `make update-openrouter-pricing` before each release |
 
-`rateFor` order: documented non-Anthropic ids → Claude family match → downloaded catalog → bundled
-snapshot → `null`. Catalog and snapshot lookups also try `openai/<id>` (Codex logs bare ids).
+`resolveRate` (and `rateFor`, its rate only) order: user's custom price → documented non-Anthropic
+ids → Claude family match → downloaded catalog → bundled snapshot → `null`; it also reports which
+source answered, for Settings' "Models in your data" table. Ids are normalised first (`:batch`/`:free`,
+Bedrock-style `openai.`/`us.anthropic.` prefixes); catalog and snapshot lookups try the exact id,
+then `openai/<id>`, then the single vendor that lists that bare id.
+
+Custom prices (`src/lib/custom-pricing.ts`) are per exact logged id, lower-cased, stored in
+localStorage (`arlo-custom-model-prices`) via `SettingsContext`, installed as module state, and
+re-read by the tray popover. Settings offers them only for models nothing else prices. They only
+reach costs computed on the front end: a Claude Code session the backend already priced
+(`cost_usd` > 0) keeps that cost.
 
 Both hand-written tables are Anthropic-only, so Codex sessions arrive with `cost_usd` 0 and are
 priced on the front end from the OpenRouter table. Both derive cache rates from the input rate

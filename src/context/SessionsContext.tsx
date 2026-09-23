@@ -11,6 +11,7 @@ import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import type { DataAccess, Session, ToolKind } from "../types";
 import { loadPriceCatalog } from "../lib/price-catalog";
+import { useSettingsContext } from "./SettingsContext";
 
 // ---------------------------------------------------------------------------
 // State shape
@@ -53,6 +54,18 @@ export function SessionsProvider({ children }: { children: ReactNode }) {
   >("idle");
   const [scanError, setScanError] = useState<string | null>(null);
   const [access, setAccess] = useState<DataAccess | null>(null);
+
+  // Custom prices change what `rateFor` returns; costs are derived in memos
+  // keyed on `sessions`, so a fresh array makes every view recompute.
+  const { customPrices } = useSettingsContext();
+  const firstPrices = useRef(true);
+  useEffect(() => {
+    if (firstPrices.current) {
+      firstPrices.current = false;
+      return;
+    }
+    setSessions((prev) => [...prev]);
+  }, [customPrices]);
 
   // Used to debounce the "usage-updated" event re-fetch (500 ms)
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);

@@ -86,7 +86,7 @@
       "colCacheRead": "Cache read",
       "colEffective": "Effective",
       "footerNote": "Rates are per million tokens ($/Mtok) as published by Anthropic. Cache write 1h is charged at the same rate as cache write 5m. Actual costs may vary; check anthropic.com/pricing for the latest rates.",
-      "unpricedWarning": "Pricing not found for {{models}}. Cost estimates may be inaccurate.",
+      "unpricedWarning": "Pricing not found for {{models}}. Set a price for them under Models in your data.",
       "introductory": "Introductory",
       "standard": "Standard",
       "online": {
@@ -98,6 +98,27 @@
         "failed": "last check failed",
         "checkNow": "Check now",
         "checking": "Checking…"
+      },
+      "builtInTitle": "Built-in rates",
+      "used": {
+        "title": "Models in your data",
+        "hint": "Every model your sessions use and where its price comes from. Set your own price for models nothing else prices — self-hosted, custom deployments, routers.",
+        "colSessions": "Sessions",
+        "colCacheWrite": "Cache write",
+        "setPrice": "Set price",
+        "edit": "Edit",
+        "remove": "Remove",
+        "save": "Save",
+        "cancel": "Cancel",
+        "free": "Self-hosted (free)",
+        "source": {
+          "custom": "Custom",
+          "documented": "Official",
+          "anthropic": "Official",
+          "catalog": "Online catalog",
+          "bundled": "OpenRouter (built-in)",
+          "none": "No price"
+        }
       }
     },
     "database": {

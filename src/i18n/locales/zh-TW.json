@@ -86,7 +86,7 @@
       "colCacheRead": "快取讀取",
       "colEffective": "生效日期",
       "footerNote": "費率為每百萬 Token（$/Mtok），依 Anthropic 公告為準。快取寫入 1 小時與快取寫入 5 分鐘費率相同。實際費用可能有所不同，請至 anthropic.com/pricing 查詢最新費率。",
-      "unpricedWarning": "找不到 {{models}} 的定價。費用估算可能不準確。",
+      "unpricedWarning": "找不到 {{models}} 的價格。請在「資料中的模型」為它們設定價格。",
       "introductory": "導入期",
       "standard": "標準",
       "online": {
@@ -98,6 +98,27 @@
         "failed": "上次檢查失敗",
         "checkNow": "立即檢查",
         "checking": "檢查中…"
+      },
+      "builtInTitle": "內建價格",
+      "used": {
+        "title": "資料中的模型",
+        "hint": "列出工作階段用到的每個模型及其價格來源。沒有任何價格來源的模型（自架、自訂部署、路由器）可以自行設定價格。",
+        "colSessions": "工作階段",
+        "colCacheWrite": "快取寫入",
+        "setPrice": "設定價格",
+        "edit": "編輯",
+        "remove": "移除",
+        "save": "儲存",
+        "cancel": "取消",
+        "free": "自架（免費）",
+        "source": {
+          "custom": "自訂",
+          "documented": "官方",
+          "anthropic": "官方",
+          "catalog": "線上價格表",
+          "bundled": "OpenRouter（內建）",
+          "none": "無價格"
+        }
       }
     },
     "database": {

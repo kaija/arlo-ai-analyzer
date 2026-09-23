@@ -2,12 +2,14 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
-import { PRICING_TABLE, isModelPriced, modelColor } from "../../pricing";
+import { PRICING_TABLE, isModelPriced, modelColor, resolveRate, totalTokens, type RateSource } from "../../pricing";
 import type { PricingEntry } from "../../pricing";
 import { Badge } from "../../primitives/Badge";
 import { useSessionsContext } from "../../context/SessionsContext";
 import { Switch } from "../../primitives/Switch";
 import type { PriceCatalogStatus } from "../../lib/price-catalog";
+import { useSettingsContext } from "../../context/SettingsContext";
+import { FREE_PRICE, type CustomPrice } from "../../lib/custom-pricing";
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -178,6 +180,219 @@ function OnlinePricesRow() {
 }
 
 // ---------------------------------------------------------------------------
+// Models in your data — every model the sessions use, where its price comes
+// from, and a user-entered price for the ones nothing else prices.
+// ---------------------------------------------------------------------------
+
+interface UsedModel {
+  model: string;
+  sessions: number;
+  tokens: number;
+}
+
+type PriceField = keyof CustomPrice;
+const PRICE_FIELDS: PriceField[] = ["inputPerMtok", "outputPerMtok", "cacheReadPerMtok", "cacheWritePerMtok"];
+
+interface Draft {
+  model: string;
+  values: Record<PriceField, string>;
+}
+
+function parseRate(text: string): number | null {
+  const trimmed = text.trim();
+  if (trimmed === "") return 0;
+  const n = Number(trimmed);
+  return Number.isFinite(n) && n >= 0 ? n : null;
+}
+
+function draftFor(model: string, price: CustomPrice | undefined): Draft {
+  const p = price ?? FREE_PRICE;
+  return {
+    model,
+    values: {
+      inputPerMtok: price ? String(p.inputPerMtok) : "",
+      outputPerMtok: price ? String(p.outputPerMtok) : "",
+      cacheReadPerMtok: price ? String(p.cacheReadPerMtok) : "",
+      cacheWritePerMtok: price ? String(p.cacheWritePerMtok) : "",
+    },
+  };
+}
+
+const SOURCE_BADGE: Record<RateSource, "accent" | "neutral"> = {
+  custom: "accent",
+  documented: "neutral",
+  anthropic: "neutral",
+  catalog: "neutral",
+  bundled: "neutral",
+};
+
+export function UsedModelsSection() {
+  const { t } = useTranslation();
+  const { sessions } = useSessionsContext();
+  const { customPrices, setCustomPrice } = useSettingsContext();
+  const [draft, setDraft] = useState<Draft | null>(null);
+
+  const rows = useMemo(() => {
+    const byModel = new Map<string, UsedModel>();
+    for (const s of sessions) {
+      if (!s.model || s.model === "<synthetic>") continue;
+      const row = byModel.get(s.model) ?? { model: s.model, sessions: 0, tokens: 0 };
+      row.sessions += 1;
+      row.tokens += totalTokens(s);
+      byModel.set(s.model, row);
+    }
+    // Unpriced first — they are why anyone opens this — then by volume.
+    return [...byModel.values()]
+      .map((row) => ({ ...row, resolved: resolveRate(row.model) }))
+      .sort((a, b) => Number(a.resolved !== null) - Number(b.resolved !== null) || b.tokens - a.tokens);
+    // customPrices: resolveRate reads them from module state.
+  }, [sessions, customPrices]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  if (rows.length === 0) return null;
+
+  const parsed = draft
+    ? PRICE_FIELDS.map((f) => parseRate(draft.values[f]))
+    : [];
+  const draftValid = parsed.every((n) => n !== null);
+
+  const save = () => {
+    if (!draft || !draftValid) return;
+    const [inputPerMtok, outputPerMtok, cacheReadPerMtok, cacheWritePerMtok] = parsed as number[];
+    setCustomPrice(draft.model, { inputPerMtok, outputPerMtok, cacheReadPerMtok, cacheWritePerMtok });
+    setDraft(null);
+  };
+
+  const fieldLabel: Record<PriceField, string> = {
+    inputPerMtok: t("settings.pricing.colInput"),
+    outputPerMtok: t("settings.pricing.colOutput"),
+    cacheReadPerMtok: t("settings.pricing.colCacheRead"),
+    cacheWritePerMtok: t("settings.pricing.used.colCacheWrite"),
+  };
+
+  return (
+    <div className="used-models">
+      <div className="used-models-head">
+        <h3 className="used-models-title">{t("settings.pricing.used.title")}</h3>
+        <p className="card-subtitle">{t("settings.pricing.used.hint")}</p>
+      </div>
+      <div className="pricing-table-scroll">
+        <table className="pricing-table used-models-table" aria-label={t("settings.pricing.used.title")}>
+          <thead>
+            <tr>
+              <th scope="col">{t("settings.pricing.colModel")}</th>
+              <th scope="col" className="num">{t("settings.pricing.used.colSessions")}</th>
+              {PRICE_FIELDS.map((f) => (
+                <th key={f} scope="col" className="num">{fieldLabel[f]}</th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map(({ model, sessions: count, resolved }) => {
+              const key = model.toLowerCase();
+              const isCustom = resolved?.source === "custom";
+              const editable = resolved === null || isCustom;
+              const editing = draft?.model === model;
+              const rate = resolved?.rate;
+              const shown: Record<PriceField, number | undefined> = {
+                inputPerMtok: rate?.inputPerMtok,
+                outputPerMtok: rate?.outputPerMtok,
+                cacheReadPerMtok: rate?.cacheReadPerMtok,
+                cacheWritePerMtok: rate?.cacheWrite5mPerMtok,
+              };
+              return (
+                <tr key={model}>
+                  <td>
+                    <div className="pricing-model-cell">
+                      <span className="model-dot" style={{ background: modelColor(model) }} aria-hidden="true" />
+                      <span className="used-model-id" title={model}>{model}</span>
+                    </div>
+                    <div className="used-model-meta">
+                      {resolved ? (
+                        <Badge variant={SOURCE_BADGE[resolved.source]}>
+                          {t(`settings.pricing.used.source.${resolved.source}`)}
+                        </Badge>
+                      ) : (
+                        <span className="used-model-unpriced">{t("settings.pricing.used.source.none")}</span>
+                      )}
+                      {editing ? (
+                        <>
+                          <button type="button" className="btn btn-primary btn-small" onClick={save} disabled={!draftValid}>
+                            {t("settings.pricing.used.save")}
+                          </button>
+                          <button type="button" className="btn btn-secondary btn-small" onClick={() => setDraft(null)}>
+                            {t("settings.pricing.used.cancel")}
+                          </button>
+                        </>
+                      ) : editable ? (
+                        <>
+                          <button
+                            type="button"
+                            className="btn btn-secondary btn-small"
+                            onClick={() => setDraft(draftFor(model, customPrices[key]))}
+                          >
+                            {isCustom ? t("settings.pricing.used.edit") : t("settings.pricing.used.setPrice")}
+                          </button>
+                          {isCustom ? (
+                            <button
+                              type="button"
+                              className="btn btn-secondary btn-small"
+                              onClick={() => setCustomPrice(model, null)}
+                            >
+                              {t("settings.pricing.used.remove")}
+                            </button>
+                          ) : (
+                            <button
+                              type="button"
+                              className="btn btn-secondary btn-small"
+                              onClick={() => setCustomPrice(model, FREE_PRICE)}
+                            >
+                              {t("settings.pricing.used.free")}
+                            </button>
+                          )}
+                        </>
+                      ) : null}
+                    </div>
+                  </td>
+                  <td className="num tnum">{count}</td>
+                  {PRICE_FIELDS.map((f) =>
+                    editing && draft ? (
+                      <td key={f} className="num">
+                        <label className={`field used-model-input${parseRate(draft.values[f]) === null ? " error" : ""}`}>
+                          <span aria-hidden="true">$</span>
+                          <input
+                            className="field-input tnum"
+                            type="text"
+                            inputMode="decimal"
+                            placeholder="0"
+                            value={draft.values[f]}
+                            aria-label={`${model} ${fieldLabel[f]}`}
+                            onChange={(e) =>
+                              setDraft({ ...draft, values: { ...draft.values, [f]: e.target.value } })
+                            }
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter") save();
+                              if (e.key === "Escape") setDraft(null);
+                            }}
+                          />
+                        </label>
+                      </td>
+                    ) : (
+                      <td key={f} className="num tnum">
+                        {shown[f] === undefined ? "—" : fmtRate(shown[f] as number)}
+                      </td>
+                    ),
+                  )}
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
 // PricingCard
 // ---------------------------------------------------------------------------
 
@@ -250,6 +465,12 @@ export function PricingCard() {
 
       {/* Unpriced warning — conditional */}
       <UnpricedWarningStrip models={unpricedModels} t={t} />
+
+      <UsedModelsSection />
+
+      <div className="used-models-head">
+        <h3 className="used-models-title">{t("settings.pricing.builtInTitle")}</h3>
+      </div>
 
       {/* Horizontally scrollable pricing table */}
       <div className="pricing-table-scroll">

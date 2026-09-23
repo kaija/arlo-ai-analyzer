@@ -1,6 +1,7 @@
 import type { Session } from "./types";
 import { OPENROUTER_MODELS, getOpenRouterModel } from "./lib/openrouter-pricing";
 import { getCatalogModel, indexByBareId } from "./lib/price-catalog";
+import { getCustomPrice } from "./lib/custom-pricing";
 
 // ---------------------------------------------------------------------------
 // Pricing entry type — used by the Settings Pricing card
@@ -138,8 +139,9 @@ export const PRICING_TABLE: PricingEntry[] = [
 // reversed vendor forms like "claude-5-sonnet-anthropic" — so we match on the
 // family keyword rather than on exact slugs.
 //
-// Exact, first-party documented non-Anthropic IDs come first, then Anthropic
-// family matching. Anything else falls back to the downloaded price catalog
+// A price the user entered in Settings (lib/custom-pricing.ts) wins over
+// everything. Then exact, first-party documented non-Anthropic IDs, then
+// Anthropic family matching. Anything else falls back to the downloaded price catalog
 // (lib/price-catalog.ts), then the bundled OpenRouter snapshot, then remains
 // "rate unknown"; charging an unknown model at a guessed rate produces
 // confident wrong numbers, which is worse.
@@ -173,17 +175,51 @@ const LEGACY_OPUS = [
 const VENDOR_PREFIX =
   /^(?:(?:us|eu|apac|jp|au|global)\.)?(?:openai|anthropic|google|meta|mistral|deepseek|qwen|nvidia|amazon|cohere|moonshotai|minimax)\./;
 
-export function rateFor(model: string | null): Rate | null {
-  const raw = (model ?? "").toLowerCase();
-  const m = raw.replace(/:batch$/, "").replace(/:free$/, "").replace(VENDOR_PREFIX, "");
+/** Where a model's price came from, for display in Settings. */
+export type RateSource = "custom" | "documented" | "anthropic" | "catalog" | "bundled";
 
-  const documentedRate = DOCUMENTED_NON_ANTHROPIC_RATES.get(m);
-  if (documentedRate) return documentedRate;
+export interface ResolvedRate {
+  rate: Rate;
+  source: RateSource;
+}
+
+export function rateFor(model: string | null): Rate | null {
+  return resolveRate(model)?.rate ?? null;
+}
+
+export function resolveRate(model: string | null): ResolvedRate | null {
+  const raw = (model ?? "").toLowerCase();
+
+  const custom = getCustomPrice(raw);
+  if (custom) {
+    return {
+      source: "custom",
+      rate: {
+        inputPerMtok: custom.inputPerMtok,
+        outputPerMtok: custom.outputPerMtok,
+        cacheWrite5mPerMtok: custom.cacheWritePerMtok,
+        cacheWrite1hPerMtok: custom.cacheWritePerMtok,
+        cacheReadPerMtok: custom.cacheReadPerMtok,
+      },
+    };
+  }
+
+  const m = raw.replace(/:batch$/, "").replace(/:free$/, "").replace(VENDOR_PREFIX, "");
 
   // Placeholder Claude Code uses for locally generated messages; always zero
   // tokens, never billed.
   if (m === "<synthetic>") return null;
 
+  const documentedRate = DOCUMENTED_NON_ANTHROPIC_RATES.get(m);
+  if (documentedRate) return { rate: documentedRate, source: "documented" };
+
+  const anthropic = anthropicRate(m);
+  if (anthropic) return { rate: anthropic, source: "anthropic" };
+
+  return openRouterRate(m);
+}
+
+function anthropicRate(m: string): Rate | null {
   // Newer generations break the 0.1x cache-read rule, so they're matched by
   // version before their family (mirrors pricing.rs). Mythos 5.1 stays on the
   // family rate: its cache-read price is unannounced.
@@ -208,7 +244,7 @@ export function rateFor(model: string | null): Rate | null {
     return rate(3, 15);
   }
 
-  return openRouterRate(m);
+  return null;
 }
 
 /**
@@ -224,15 +260,18 @@ export function rateFor(model: string | null): Rate | null {
  */
 const BUNDLED_BY_BARE_ID = indexByBareId(OPENROUTER_MODELS.map((m) => [m.id, m] as const));
 
-function openRouterRate(model: string): Rate | null {
+function openRouterRate(model: string): ResolvedRate | null {
   const downloaded = getCatalogModel(model);
   if (downloaded) {
     return {
-      inputPerMtok: downloaded.inputPerMtok,
-      outputPerMtok: downloaded.outputPerMtok,
-      cacheWrite5mPerMtok: downloaded.cacheWritePerMtok,
-      cacheWrite1hPerMtok: downloaded.cacheWrite1hPerMtok || downloaded.cacheWritePerMtok,
-      cacheReadPerMtok: downloaded.cacheReadPerMtok,
+      source: "catalog",
+      rate: {
+        inputPerMtok: downloaded.inputPerMtok,
+        outputPerMtok: downloaded.outputPerMtok,
+        cacheWrite5mPerMtok: downloaded.cacheWritePerMtok,
+        cacheWrite1hPerMtok: downloaded.cacheWrite1hPerMtok || downloaded.cacheWritePerMtok,
+        cacheReadPerMtok: downloaded.cacheReadPerMtok,
+      },
     };
   }
 
@@ -245,14 +284,17 @@ function openRouterRate(model: string): Rate | null {
   // producing a nonsensical negative cost.
   if (entry.promptPerMtok < 0 || entry.completionPerMtok < 0) return null;
   return {
-    inputPerMtok: entry.promptPerMtok,
-    outputPerMtok: entry.completionPerMtok,
-    cacheWrite5mPerMtok: entry.cacheWritePerMtok,
-    // OpenAI has no 1-hour cache tier; fall back to the single write rate so
-    // the session-level estimate (which charges cache writes at 1h) doesn't
-    // silently bill them at zero.
-    cacheWrite1hPerMtok: entry.cacheWrite1hPerMtok || entry.cacheWritePerMtok,
-    cacheReadPerMtok: entry.cacheReadPerMtok,
+    source: "bundled",
+    rate: {
+      inputPerMtok: entry.promptPerMtok,
+      outputPerMtok: entry.completionPerMtok,
+      cacheWrite5mPerMtok: entry.cacheWritePerMtok,
+      // OpenAI has no 1-hour cache tier; fall back to the single write rate so
+      // the session-level estimate (which charges cache writes at 1h) doesn't
+      // silently bill them at zero.
+      cacheWrite1hPerMtok: entry.cacheWrite1hPerMtok || entry.cacheWritePerMtok,
+      cacheReadPerMtok: entry.cacheReadPerMtok,
+    },
   };
 }
 

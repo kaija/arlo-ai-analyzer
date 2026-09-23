@@ -12,6 +12,13 @@ import {
   writeDailySpendAlertSettings,
   type DailySpendAlertSettings,
 } from "../lib/spend-alert";
+import {
+  installCustomPrices,
+  readCustomPrices,
+  writeCustomPrices,
+  type CustomPrice,
+  type CustomPrices,
+} from "../lib/custom-pricing";
 
 // ---------------------------------------------------------------------------
 // localStorage keys
@@ -166,6 +173,11 @@ interface SettingsState {
 
   dailySpendAlert: DailySpendAlertSettings;
   updateDailySpendAlert: (patch: Partial<DailySpendAlertSettings>) => void;
+
+  /** User-entered prices for models no table knows, keyed by lower-cased id. */
+  customPrices: CustomPrices;
+  /** Set a model's price, or remove it with `null`. */
+  setCustomPrice: (model: string, price: CustomPrice | null) => void;
 }
 
 // ---------------------------------------------------------------------------
@@ -193,6 +205,8 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
     useState<NotificationSettings>(defaultNotifications);
   const [dailySpendAlert, setDailySpendAlertState] =
     useState<DailySpendAlertSettings>(readDailySpendAlertSettings);
+  const [customPrices, setCustomPricesState] =
+    useState<CustomPrices>(readCustomPrices);
 
   // Apply theme to DOM on first mount
   useEffect(() => {
@@ -290,6 +304,22 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
     []
   );
 
+  const setCustomPrice = useCallback(
+    (model: string, price: CustomPrice | null) => {
+      setCustomPricesState((prev) => {
+        const next = { ...prev };
+        const key = model.toLowerCase();
+        if (price) next[key] = price;
+        else delete next[key];
+        writeCustomPrices(next);
+        // `rateFor` reads module state; install before the re-render.
+        installCustomPrices(next);
+        return next;
+      });
+    },
+    []
+  );
+
   return (
     <SettingsContext.Provider
       value={{
@@ -309,6 +339,8 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
         setNotification,
         dailySpendAlert,
         updateDailySpendAlert,
+        customPrices,
+        setCustomPrice,
       }}
     >
       {children}

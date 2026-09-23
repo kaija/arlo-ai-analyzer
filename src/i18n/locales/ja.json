@@ -86,7 +86,7 @@
       "colCacheRead": "キャッシュ読み取り",
       "colEffective": "有効日",
       "footerNote": "レートはAnthropicが公開する100万トークンあたりの単価（$/Mtok）です。キャッシュ書き込み1時間はキャッシュ書き込み5分と同じレートで課金されます。実際のコストは異なる場合があります。最新のレートはanthropiccom/pricingでご確認ください。",
-      "unpricedWarning": "{{models}} の料金情報が見つかりません。コスト見積もりが不正確になる可能性があります。",
+      "unpricedWarning": "{{models}} の料金が見つかりません。「データ内のモデル」で料金を設定してください。",
       "introductory": "導入価格",
       "standard": "標準",
       "online": {
@@ -98,6 +98,27 @@
         "failed": "前回の確認に失敗",
         "checkNow": "今すぐ確認",
         "checking": "確認中…"
+      },
+      "builtInTitle": "内蔵レート",
+      "used": {
+        "title": "データ内のモデル",
+        "hint": "セッションで使われたすべてのモデルと料金の出所です。どこにも料金がないモデル（セルフホスト、カスタムデプロイ、ルーター）は自分で料金を設定できます。",
+        "colSessions": "セッション",
+        "colCacheWrite": "キャッシュ書き込み",
+        "setPrice": "料金を設定",
+        "edit": "編集",
+        "remove": "削除",
+        "save": "保存",
+        "cancel": "キャンセル",
+        "free": "セルフホスト（無料）",
+        "source": {
+          "custom": "カスタム",
+          "documented": "公式",
+          "anthropic": "公式",
+          "catalog": "オンライン料金表",
+          "bundled": "OpenRouter（内蔵）",
+          "none": "料金なし"
+        }
       }
     },
     "database": {
