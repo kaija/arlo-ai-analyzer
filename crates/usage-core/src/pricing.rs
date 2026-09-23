@@ -98,6 +98,17 @@ pub fn rate_for(model: &str) -> Option<Rate> {
     // and reversed vendor forms like "claude-5-sonnet-anthropic". Family
     // keyword matching handles all of them.
 
+    // Newer generations break the 0.1x cache-read rule, so they're matched by
+    // version before their family. Verified against Anthropic's published
+    // rates on 2026-09-23. Mythos 5.1 stays on the family rate: whether it
+    // shares Fable 5.1's cache-read price is unannounced.
+    if m.contains("fable-5-1") || m.contains("fable-5.1") {
+        return Some(Rate { cache_read: 0.25, ..Rate::anthropic(10.0, 50.0) });
+    }
+    if m.contains("opus-5-5") || m.contains("opus-5.5") {
+        return Some(Rate { cache_read: 0.2, ..Rate::anthropic(4.0, 20.0) });
+    }
+
     if m.contains("fable") || m.contains("mythos") {
         return Some(Rate::anthropic(10.0, 50.0));
     }
@@ -240,6 +251,22 @@ mod tests {
             cache_write_1h: 0.0,
             cache_read: 0.0,
         });
+    }
+
+    #[test]
+    fn newest_generations_use_their_own_cache_read_rate() {
+        for id in ["claude-opus-5-5", "claude-opus-5.5", "anthropic/claude-opus-5.5"] {
+            let r = rate_for(id).unwrap();
+            assert_eq!((r.input, r.output, r.cache_read), (4.0, 20.0, 0.2), "{id}");
+            assert_eq!((r.cache_write_5m, r.cache_write_1h), (5.0, 8.0), "{id}");
+        }
+        for id in ["claude-fable-5-1", "anthropic/claude-fable-5.1"] {
+            let r = rate_for(id).unwrap();
+            assert_eq!((r.input, r.output, r.cache_read), (10.0, 50.0, 0.25), "{id}");
+        }
+        // The previous generation is unchanged.
+        assert_eq!(rate_for("claude-opus-5").unwrap().cache_read, 0.5);
+        assert_eq!(rate_for("claude-fable-5").unwrap().cache_read, 1.0);
     }
 
     #[test]

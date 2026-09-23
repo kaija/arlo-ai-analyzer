@@ -76,3 +76,28 @@ describe("non-Anthropic pricing", () => {
     expect(contextWindow("claude-sonnet-4-5")).toBe(200_000);
   });
 });
+
+describe("newest Claude generations", () => {
+  it("prices Opus 5.5 at $4/$20 with a $0.20 cache read", () => {
+    for (const id of ["claude-opus-5-5", "claude-opus-5.5", "anthropic/claude-opus-5.5"]) {
+      expect(rateFor(id)).toEqual({
+        inputPerMtok: 4,
+        outputPerMtok: 20,
+        cacheWrite5mPerMtok: 5,
+        cacheWrite1hPerMtok: 8,
+        cacheReadPerMtok: 0.2,
+      });
+    }
+  });
+
+  it("prices Fable 5.1 cache reads at $0.25, not the 0.1x rule", () => {
+    expect(rateFor("claude-fable-5-1")).toMatchObject({ inputPerMtok: 10, outputPerMtok: 50, cacheReadPerMtok: 0.25 });
+    expect(rateFor("claude-fable-5")?.cacheReadPerMtok).toBe(1);
+    expect(rateFor("claude-opus-5")?.cacheReadPerMtok).toBe(0.5);
+  });
+
+  it("gives both a 1M context window", () => {
+    expect(contextWindow("claude-opus-5-5")).toBe(1_000_000);
+    expect(contextWindow("claude-fable-5-1")).toBe(1_000_000);
+  });
+});

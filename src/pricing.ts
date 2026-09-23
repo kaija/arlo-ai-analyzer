@@ -86,9 +86,24 @@ const OBSERVED_NON_ANTHROPIC_PRICING: PricingEntry[] = [
   apiEntry("gemma-4", "2026-09-17", 0, 0, 0, 0),
 ];
 
+/** An Anthropic rate whose cache read doesn't follow the 0.1x rule. */
+function entryWithCacheRead(
+  model: string,
+  effectiveDate: string,
+  inputPerMtok: number,
+  outputPerMtok: number,
+  cacheReadPerMtok: number,
+): PricingEntry {
+  return { ...entry(model, effectiveDate, inputPerMtok, outputPerMtok), cacheReadPerMtok };
+}
+
 export const PRICING_TABLE: PricingEntry[] = [
   // --- Fable / Mythos tier ---
+  // Rates for Fable 5.1 and Opus 5.5 verified 2026-09-23 against Anthropic's published pricing.
+  entryWithCacheRead("claude-fable-5-1", "2026-09-23", 10, 50, 0.25),
   entry("claude-fable-5", "2026-05-19", 10, 50),
+  // --- Opus 5.5 ($4/$20) ---
+  entryWithCacheRead("claude-opus-5-5", "2026-09-23", 4, 20, 0.2),
   // --- Opus: current tier ($5/$25 since Opus 4.5) ---
   entry("claude-opus-5", "2026-06-24", 5, 25),
   entry("claude-opus-4-8", "2026-04-22", 5, 25),
@@ -157,6 +172,12 @@ export function rateFor(model: string | null): Rate | null {
   // Placeholder Claude Code uses for locally generated messages; always zero
   // tokens, never billed.
   if (m === "<synthetic>") return null;
+
+  // Newer generations break the 0.1x cache-read rule, so they're matched by
+  // version before their family (mirrors pricing.rs). Mythos 5.1 stays on the
+  // family rate: its cache-read price is unannounced.
+  if (m.includes("fable-5-1") || m.includes("fable-5.1")) return { ...rate(10, 50), cacheReadPerMtok: 0.25 };
+  if (m.includes("opus-5-5") || m.includes("opus-5.5")) return { ...rate(4, 20), cacheReadPerMtok: 0.2 };
 
   if (m.includes("fable") || m.includes("mythos")) return rate(10, 50);
 
@@ -264,7 +285,7 @@ export function estimateRequestCost(
 const LONG_CONTEXT_MODELS = [
   "fable",
   "mythos",
-  "opus-5",
+  "opus-5", // also matches opus-5-5 / opus-5.5
   "opus-4-8",
   "opus-4.8",
   "opus-4-7",

@@ -131,7 +131,10 @@ snapshot → `null`. Catalog and snapshot lookups also try `openai/<id>` (Codex 
 
 Both hand-written tables are Anthropic-only, so Codex sessions arrive with `cost_usd` 0 and are
 priced on the front end from the OpenRouter table. Both derive cache rates from the input rate
-(5m write ×1.25, 1h write ×2, read ×0.1) rather than transcribing five numbers per model.
+(5m write ×1.25, 1h write ×2, read ×0.1) rather than transcribing five numbers per model — except
+Opus 5.5 ($0.20) and Fable 5.1 ($0.25), whose cache reads break the rule and are matched by version
+before their family. Family matching outranks the catalog, so a new Claude generation with a new
+price must be added here; the catalog will not correct it.
 An unknown model returns `None`/`null`, which means **unknown, not free** — the UI must render "—",
 never `$0.00`. Keep `pricing.rs` and `pricing.ts` in sync when adding a model.
 
