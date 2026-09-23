@@ -101,3 +101,20 @@ describe("newest Claude generations", () => {
     expect(contextWindow("claude-fable-5-1")).toBe(1_000_000);
   });
 });
+
+describe("GPT-6 family", () => {
+  it("prices GPT-6 Sol and Luna at OpenAI's documented rates", () => {
+    expect(rateFor("gpt-6-sol")).toEqual({
+      inputPerMtok: 2,
+      outputPerMtok: 10,
+      cacheWrite5mPerMtok: 2.5,
+      cacheWrite1hPerMtok: 2.5,
+      cacheReadPerMtok: 0.2,
+    });
+    expect(rateFor("gpt-6-luna")).toMatchObject({ inputPerMtok: 0.1, outputPerMtok: 0.5, cacheReadPerMtok: 0.01 });
+  });
+
+  it("keeps GPT-5.6 Sol on its own schedule", () => {
+    expect(rateFor("gpt-5.6-sol")?.inputPerMtok).toBe(4);
+  });
+});

@@ -86,6 +86,9 @@ pub fn rate_for(model: &str) -> Option<Rate> {
         "gpt-5.6-terra" => Some(Rate::api(2.0, 12.0, 2.5, 0.2)),
         "gpt-5.6-sol" => Some(Rate::api(4.0, 20.0, 5.0, 0.4)),
         "gpt-6-astra" => Some(Rate::api(10.0, 50.0, 12.5, 1.0)),
+        // Verified 2026-09-23.
+        "gpt-6-sol" => Some(Rate::api(2.0, 10.0, 2.5, 0.2)),
+        "gpt-6-luna" => Some(Rate::api(0.1, 0.5, 0.125, 0.01)),
         "codex-auto-review" => Some(Rate::api(2.5, 15.0, 0.0, 0.25)),
         "gemma-4" => Some(Rate::api(0.0, 0.0, 0.0, 0.0)),
         _ => None,
@@ -267,6 +270,14 @@ mod tests {
         // The previous generation is unchanged.
         assert_eq!(rate_for("claude-opus-5").unwrap().cache_read, 0.5);
         assert_eq!(rate_for("claude-fable-5").unwrap().cache_read, 1.0);
+    }
+
+    #[test]
+    fn gpt_6_family_has_documented_rates() {
+        assert_eq!(rate_for("gpt-6-sol"), Some(Rate::api(2.0, 10.0, 2.5, 0.2)));
+        assert_eq!(rate_for("gpt-6-luna"), Some(Rate::api(0.1, 0.5, 0.125, 0.01)));
+        // GPT-5.6 Sol keeps its own (promotional) schedule, not GPT-6 Sol's.
+        assert_eq!(rate_for("gpt-5.6-sol").unwrap().input, 4.0);
     }
 
     #[test]

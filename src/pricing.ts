@@ -79,6 +79,9 @@ const OBSERVED_NON_ANTHROPIC_PRICING: PricingEntry[] = [
   apiEntry("gpt-5.6-terra", "2026-09-17", 2, 12, 0.2, 2.5),
   apiEntry("gpt-5.6-sol", "2026-09-17", 4, 20, 0.4, 5),
   apiEntry("gpt-6-astra", "2026-09-17", 10, 50, 1, 12.5),
+  // Verified 2026-09-23 against OpenAI's GPT-6 Sol / Luna model pages.
+  apiEntry("gpt-6-sol", "2026-09-23", 2, 10, 0.2, 2.5),
+  apiEntry("gpt-6-luna", "2026-09-23", 0.1, 0.5, 0.01, 0.125),
   // Official Codex/Work alias for GPT-5.4, not a standalone API SKU.
   apiEntry("codex-auto-review", "2026-09-17", 2.5, 15, 0.25, 0),
   // This bare family ID is free only for the Gemini API/local interpretation;
@@ -328,10 +331,11 @@ export function contextWindow(model: string | null): number {
 // series-1 fallback — the same blue as Opus, which is why a mixed-model chart
 // came out one colour. Specific generations are matched before family.
 const MODEL_COLOR_MAP: Array<{ pattern: RegExp; series: number }> = [
+  // A GPT tier keeps its colour across generations (GPT-6 Sol = GPT-5.6 Sol).
+  { pattern: /gpt-6-sol|gpt-5[.]6-sol/i,         series: 9 },
+  { pattern: /gpt-6-luna|gpt-5[.]6-luna/i,       series: 11 },
   { pattern: /gpt-6|astra/i,                     series: 8 },
-  { pattern: /gpt-5[.]6-sol/i,                   series: 9 },
   { pattern: /gpt-5[.]6-terra/i,                 series: 10 },
-  { pattern: /gpt-5[.]6-luna/i,                  series: 11 },
   { pattern: /gpt-5[.]5/i,                       series: 12 },
   { pattern: /fable|mythos/i,                    series: 3 },
   { pattern: /opus-5|opus-4[-.]6|opus-4[-.]7/i,  series: 1 },

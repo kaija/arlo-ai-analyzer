@@ -54,3 +54,23 @@ That does **not** justify applying those amounts to the ambiguous `gemma-4` iden
 3. Do not label an arbitrary unknown model as free. The zero rate is limited to this specific
    `gemma-4` identifier because Google’s official Gemini API table explicitly marks its Gemma 4
    Free Tier as no charge.
+
+## Update 2026-09-23: GPT-6 Sol and Luna
+
+Verified against OpenAI's model pages on 2026-09-23 (Asia/Taipei). Same long-context terms as
+the rest of the family (>272K input tokens: 2× input and cache, 1.5× output); cache writes are
+1.25× input.
+
+| Model ID | Input | Cached input / cache read | Cache write | Output | Source |
+| --- | ---: | ---: | ---: | ---: | --- |
+| `gpt-6-sol` | $2.00 | $0.20 | $2.50 | $10.00 | [GPT-6 Sol model page](https://developers.openai.com/api/docs/models/gpt-6-sol) |
+| `gpt-6-luna` | $0.10 | $0.01 | $0.125 | $0.50 | [GPT-6 Luna model page](https://developers.openai.com/api/docs/models/gpt-6-luna) |
+
+Re-checked unchanged: `gpt-6-astra` ($10 / $1 / $12.50 / $50) and `gpt-5.6-sol` ($4 / $0.40 /
+$5 / $20, promotional through at least 2026-11-21).
+
+Not added: OpenRouter lists `-pro` variants of GPT-5.6 and GPT-6 at the base rates, but OpenAI
+has no page for them (`gpt-6-sol-pro` → 404), and there is no `gpt-6-terra`. They stay priced
+from the downloaded catalog. OpenRouter's `openai/gpt-5.6-sol` now shows $2/$10 — GPT-6 Sol's
+rate, not OpenAI's published GPT-5.6 Sol rate — which is why the documented entry must keep
+priority over the catalog.
