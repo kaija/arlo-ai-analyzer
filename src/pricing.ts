@@ -1,6 +1,6 @@
 import type { Session } from "./types";
-import { getOpenRouterModel } from "./lib/openrouter-pricing";
-import { getCatalogModel } from "./lib/price-catalog";
+import { OPENROUTER_MODELS, getOpenRouterModel } from "./lib/openrouter-pricing";
+import { getCatalogModel, indexByBareId } from "./lib/price-catalog";
 
 // ---------------------------------------------------------------------------
 // Pricing entry type — used by the Settings Pricing card
@@ -165,9 +165,17 @@ const LEGACY_OPUS = [
   "opus-4-1",
 ];
 
+/**
+ * Bedrock-style ids put the vendor, optionally after a region, in front of
+ * the model: "openai.gpt-5.6-terra", "us.anthropic.claude-…". Mirrors
+ * `strip_vendor_prefix` in pricing.rs.
+ */
+const VENDOR_PREFIX =
+  /^(?:(?:us|eu|apac|jp|au|global)\.)?(?:openai|anthropic|google|meta|mistral|deepseek|qwen|nvidia|amazon|cohere|moonshotai|minimax)\./;
+
 export function rateFor(model: string | null): Rate | null {
   const raw = (model ?? "").toLowerCase();
-  const m = raw.replace(/:batch$/, "").replace(/:free$/, "");
+  const m = raw.replace(/:batch$/, "").replace(/:free$/, "").replace(VENDOR_PREFIX, "");
 
   const documentedRate = DOCUMENTED_NON_ANTHROPIC_RATES.get(m);
   if (documentedRate) return documentedRate;
@@ -208,12 +216,16 @@ export function rateFor(model: string | null): Rate | null {
  * the snapshot bundled with the app. Both are OpenRouter's list, keyed by its
  * namespaced ids.
  *
- * Codex logs a bare model id ("gpt-5.6-terra"); OpenRouter namespaces it
- * ("openai/gpt-5.6-terra"). Exact, official rates for observed Codex models
- * take priority in `rateFor`; anything that matches none remains unknown.
+ * Tools log bare model ids ("gpt-5.6-terra", "gemini-3.6-flash"); OpenRouter
+ * namespaces them ("openai/…", "google/…"). A bare id resolves under
+ * `openai/` first, then under whichever single vendor lists it. Exact,
+ * official rates take priority in `rateFor`; anything that matches none
+ * remains unknown.
  */
+const BUNDLED_BY_BARE_ID = indexByBareId(OPENROUTER_MODELS.map((m) => [m.id, m] as const));
+
 function openRouterRate(model: string): Rate | null {
-  const downloaded = getCatalogModel(model) ?? getCatalogModel(`openai/${model}`);
+  const downloaded = getCatalogModel(model);
   if (downloaded) {
     return {
       inputPerMtok: downloaded.inputPerMtok,
@@ -224,7 +236,8 @@ function openRouterRate(model: string): Rate | null {
     };
   }
 
-  const entry = getOpenRouterModel(model) ?? getOpenRouterModel(`openai/${model}`);
+  const entry =
+    getOpenRouterModel(model) ?? getOpenRouterModel(`openai/${model}`) ?? BUNDLED_BY_BARE_ID.get(model);
   if (!entry) return null;
   // OpenRouter uses negative sentinel values (e.g. -1_000_000) for router
   // models like "openrouter/auto" where pricing is dynamic and unknown at
@@ -246,6 +259,9 @@ function openRouterRate(model: string): Rate | null {
 /** True when we have a real rate for this model. */
 export function isModelPriced(model: string | null): boolean {
   if (!model) return true; // null model → nothing to warn about
+  // Claude Code's placeholder for locally generated messages: never billed,
+  // so there is no price to be missing.
+  if (model === "<synthetic>") return true;
   return rateFor(model) !== null;
 }
 

@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it } from "vitest";
 import { installPriceCatalog, type CatalogModel, type PriceCatalog } from "./price-catalog";
-import { rateFor } from "../pricing";
+import { isModelPriced, rateFor } from "../pricing";
 
 function catalog(models: Record<string, CatalogModel>): PriceCatalog {
   return {
@@ -72,5 +72,33 @@ describe("downloaded price catalog in rateFor", () => {
     installPriceCatalog(catalog({ "openai/gpt-4": model(25, 50) }));
     installPriceCatalog(null);
     expect(rateFor("openai/gpt-4")?.inputPerMtok).toBe(30);
+  });
+});
+
+describe("model id shapes", () => {
+  afterEach(() => installPriceCatalog(null));
+
+  it("resolves a bare id under the one vendor that lists it", () => {
+    installPriceCatalog(catalog({ "google/gemini-9-flash": model(0.5, 3) }));
+    expect(rateFor("gemini-9-flash")?.inputPerMtok).toBe(0.5);
+  });
+
+  it("does not guess when two vendors list the same bare id", () => {
+    installPriceCatalog(catalog({ "a/shared-model": model(1, 1), "b/shared-model": model(2, 2) }));
+    expect(rateFor("shared-model")).toBeNull();
+  });
+
+  it("strips Bedrock-style vendor prefixes", () => {
+    expect(rateFor("openai.gpt-5.6-terra")).toEqual(rateFor("gpt-5.6-terra"));
+    expect(rateFor("us.anthropic.claude-opus-5")).toEqual(rateFor("claude-opus-5"));
+  });
+
+  it("resolves bare ids from the bundled snapshot too", () => {
+    expect(rateFor("gemini-3.6-flash")).not.toBeNull();
+  });
+
+  it("never warns about Claude Code's <synthetic> placeholder", () => {
+    expect(rateFor("<synthetic>")).toBeNull();
+    expect(isModelPriced("<synthetic>")).toBe(true);
   });
 });

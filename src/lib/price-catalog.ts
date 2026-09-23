@@ -44,14 +44,36 @@ export interface PriceCatalogStatus {
   model_count: number;
 }
 
+/**
+ * Index OpenRouter-style ids ("google/gemini-3.6-flash") by their bare model
+ * id ("gemini-3.6-flash"), which is what most tools log. A bare id claimed by
+ * more than one vendor is left out rather than guessed.
+ */
+export function indexByBareId<T>(entries: Iterable<[string, T]>): Map<string, T> {
+  const index = new Map<string, T>();
+  const ambiguous = new Set<string>();
+  for (const [id, value] of entries) {
+    const slash = id.indexOf("/");
+    if (slash < 0) continue;
+    const bare = id.slice(slash + 1);
+    if (index.has(bare)) ambiguous.add(bare);
+    else index.set(bare, value);
+  }
+  for (const bare of ambiguous) index.delete(bare);
+  return index;
+}
+
 let models = new Map<string, CatalogModel>();
+let byBareId = new Map<string, CatalogModel>();
 
 export function installPriceCatalog(catalog: PriceCatalog | null): void {
   models = new Map(Object.entries(catalog?.models ?? {}));
+  byBareId = indexByBareId(models);
 }
 
+/** Exact id first, then a bare id under its (unique) vendor namespace. */
 export function getCatalogModel(id: string): CatalogModel | undefined {
-  return models.get(id);
+  return models.get(id) ?? models.get(`openai/${id}`) ?? byBareId.get(id);
 }
 
 /** Fetch the backend's current catalog and install it. Never throws. */

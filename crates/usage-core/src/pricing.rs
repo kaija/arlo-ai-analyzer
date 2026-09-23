@@ -65,9 +65,35 @@ const LEGACY_OPUS: [&str; 5] = [
     "opus-4-1",
 ];
 
+/// Bedrock-style ids put the vendor, optionally after a region, in front of
+/// the model: "openai.gpt-5.6-terra", "us.anthropic.claude-…". Mirrors
+/// `VENDOR_PREFIX` in pricing.ts.
+fn strip_vendor_prefix(m: &str) -> &str {
+    const REGIONS: [&str; 6] = ["us.", "eu.", "apac.", "jp.", "au.", "global."];
+    const VENDORS: [&str; 12] = [
+        "openai.",
+        "anthropic.",
+        "google.",
+        "meta.",
+        "mistral.",
+        "deepseek.",
+        "qwen.",
+        "nvidia.",
+        "amazon.",
+        "cohere.",
+        "moonshotai.",
+        "minimax.",
+    ];
+    let rest = REGIONS.iter().find_map(|r| m.strip_prefix(r)).unwrap_or(m);
+    VENDORS
+        .iter()
+        .find_map(|v| rest.strip_prefix(v))
+        .unwrap_or(m)
+}
+
 pub fn rate_for(model: &str) -> Option<Rate> {
     let m = model.to_lowercase();
-    let m = m.trim_end_matches(":batch").trim_end_matches(":free");
+    let m = strip_vendor_prefix(m.trim_end_matches(":batch").trim_end_matches(":free"));
 
     // Placeholder used by Claude Code for locally generated messages; always
     // zero tokens, never billed.
@@ -106,10 +132,16 @@ pub fn rate_for(model: &str) -> Option<Rate> {
     // rates on 2026-09-23. Mythos 5.1 stays on the family rate: whether it
     // shares Fable 5.1's cache-read price is unannounced.
     if m.contains("fable-5-1") || m.contains("fable-5.1") {
-        return Some(Rate { cache_read: 0.25, ..Rate::anthropic(10.0, 50.0) });
+        return Some(Rate {
+            cache_read: 0.25,
+            ..Rate::anthropic(10.0, 50.0)
+        });
     }
     if m.contains("opus-5-5") || m.contains("opus-5.5") {
-        return Some(Rate { cache_read: 0.2, ..Rate::anthropic(4.0, 20.0) });
+        return Some(Rate {
+            cache_read: 0.2,
+            ..Rate::anthropic(4.0, 20.0)
+        });
     }
 
     if m.contains("fable") || m.contains("mythos") {
@@ -258,14 +290,22 @@ mod tests {
 
     #[test]
     fn newest_generations_use_their_own_cache_read_rate() {
-        for id in ["claude-opus-5-5", "claude-opus-5.5", "anthropic/claude-opus-5.5"] {
+        for id in [
+            "claude-opus-5-5",
+            "claude-opus-5.5",
+            "anthropic/claude-opus-5.5",
+        ] {
             let r = rate_for(id).unwrap();
             assert_eq!((r.input, r.output, r.cache_read), (4.0, 20.0, 0.2), "{id}");
             assert_eq!((r.cache_write_5m, r.cache_write_1h), (5.0, 8.0), "{id}");
         }
         for id in ["claude-fable-5-1", "anthropic/claude-fable-5.1"] {
             let r = rate_for(id).unwrap();
-            assert_eq!((r.input, r.output, r.cache_read), (10.0, 50.0, 0.25), "{id}");
+            assert_eq!(
+                (r.input, r.output, r.cache_read),
+                (10.0, 50.0, 0.25),
+                "{id}"
+            );
         }
         // The previous generation is unchanged.
         assert_eq!(rate_for("claude-opus-5").unwrap().cache_read, 0.5);
@@ -275,9 +315,24 @@ mod tests {
     #[test]
     fn gpt_6_family_has_documented_rates() {
         assert_eq!(rate_for("gpt-6-sol"), Some(Rate::api(2.0, 10.0, 2.5, 0.2)));
-        assert_eq!(rate_for("gpt-6-luna"), Some(Rate::api(0.1, 0.5, 0.125, 0.01)));
+        assert_eq!(
+            rate_for("gpt-6-luna"),
+            Some(Rate::api(0.1, 0.5, 0.125, 0.01))
+        );
         // GPT-5.6 Sol keeps its own (promotional) schedule, not GPT-6 Sol's.
         assert_eq!(rate_for("gpt-5.6-sol").unwrap().input, 4.0);
+    }
+
+    #[test]
+    fn bedrock_style_vendor_prefixes_are_stripped() {
+        assert_eq!(rate_for("openai.gpt-5.6-terra"), rate_for("gpt-5.6-terra"));
+        assert_eq!(
+            rate_for("us.anthropic.claude-opus-5"),
+            rate_for("claude-opus-5")
+        );
+        // A region alone is not a vendor prefix; ids with dots stay intact.
+        assert_eq!(strip_vendor_prefix("us.gpt-5.6-terra"), "us.gpt-5.6-terra");
+        assert_eq!(strip_vendor_prefix("gpt-5.6-terra"), "gpt-5.6-terra");
     }
 
     #[test]
@@ -286,7 +341,6 @@ mod tests {
             "nvidia-nemotron-nano-3-30b-aws",
             "openrouter/auto",
             "z-ai/glm-5.2",
-            "openai.gpt-5.6-terra",
             "<synthetic>",
             "",
         ] {
