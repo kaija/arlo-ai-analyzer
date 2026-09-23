@@ -10,7 +10,8 @@ OUT="${1:-_site}"
 
 rm -rf "$OUT"
 mkdir -p "$OUT"
-cp site/index.html site/404.html site/style.css site/icon.png "$OUT/"
+cp site/index.html site/404.html site/styles.css site/i18n.js site/main.js site/icon.png "$OUT/"
+cp -R site/assets "$OUT/assets"
 
 npx --yes marked@18 -i PRIVACY.md -o "$OUT/privacy.body.html"
 node -e '
