@@ -3,11 +3,14 @@
   "bundle": {
     "targets": ["app"],
     "macOS": {
-      "bundleVersion": "2",
+      "bundleVersion": "3",
       "entitlements": "app-store.entitlements.plist",
       "hardenedRuntime": true,
       "infoPlist": "Info.appstore.plist",
-      "signingIdentity": "3rd Party Mac Developer Application: Chang KaiChieh (H2ZM466J6A)"
+      "signingIdentity": "3rd Party Mac Developer Application: Chang KaiChieh (H2ZM466J6A)",
+      "files": {
+        "embedded.provisionprofile": "./embedded.provisionprofile"
+      }
     }
   }
 }
