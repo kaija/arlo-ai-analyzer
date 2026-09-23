@@ -10,6 +10,7 @@ import {
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import type { DataAccess, Session, ToolKind } from "../types";
+import { loadPriceCatalog } from "../lib/price-catalog";
 
 // ---------------------------------------------------------------------------
 // State shape
@@ -114,8 +115,9 @@ export function SessionsProvider({ children }: { children: ReactNode }) {
   );
 
   useEffect(() => {
-    // Initial load
-    refresh();
+    // Initial load. The price catalog goes first so the first render already
+    // prices models only the downloaded catalog knows.
+    void loadPriceCatalog().then(refresh);
     invoke<DataAccess>("get_data_access")
       .then(setAccess)
       .catch(() => {});
@@ -130,11 +132,19 @@ export function SessionsProvider({ children }: { children: ReactNode }) {
       }, 500);
     });
 
+    // A new catalog (or the online-updates switch) changes what `rateFor`
+    // returns. Costs are derived in memos keyed on `sessions`, so a fresh
+    // array is what makes every view recompute.
+    const unlistenCatalog = listen("price-catalog-updated", () => {
+      void loadPriceCatalog().then(() => setSessions((prev) => [...prev]));
+    });
+
     return () => {
       if (debounceRef.current !== null) {
         clearTimeout(debounceRef.current);
       }
       unlistenPromise.then((fn) => fn());
+      unlistenCatalog.then((fn) => fn());
     };
   }, [refresh]);
 

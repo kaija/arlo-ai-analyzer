@@ -1,9 +1,13 @@
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { invoke } from "@tauri-apps/api/core";
+import { listen } from "@tauri-apps/api/event";
 import { PRICING_TABLE, isModelPriced, modelColor } from "../../pricing";
 import type { PricingEntry } from "../../pricing";
 import { Badge } from "../../primitives/Badge";
 import { useSessionsContext } from "../../context/SessionsContext";
+import { Switch } from "../../primitives/Switch";
+import type { PriceCatalogStatus } from "../../lib/price-catalog";
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -91,6 +95,89 @@ function UnpricedWarningStrip({ models, t }: UnpricedWarningStripProps) {
 }
 
 // ---------------------------------------------------------------------------
+// Online price updates — the switch for the daily catalog download
+// ---------------------------------------------------------------------------
+
+function OnlinePricesRow() {
+  const { t } = useTranslation();
+  const [status, setStatus] = useState<PriceCatalogStatus | null>(null);
+  const [checking, setChecking] = useState(false);
+
+  useEffect(() => {
+    const load = () =>
+      invoke<PriceCatalogStatus>("get_price_catalog_status").then(setStatus).catch(() => {});
+    void load();
+    const unlisten = listen("price-catalog-updated", () => void load());
+    return () => void unlisten.then((fn) => fn());
+  }, []);
+
+  if (status === null) return null;
+
+  const toggle = (enabled: boolean) =>
+    invoke<PriceCatalogStatus>("set_price_catalog_enabled", { enabled }).then(setStatus).catch(() => {});
+
+  const checkNow = async () => {
+    setChecking(true);
+    try {
+      setStatus(await invoke<PriceCatalogStatus>("check_price_catalog"));
+    } catch {
+      // The failure is recorded in the status; re-read it to show it.
+      await invoke<PriceCatalogStatus>("get_price_catalog_status").then(setStatus).catch(() => {});
+    } finally {
+      setChecking(false);
+    }
+  };
+
+  const updated = status.last_updated ?? status.generated_at;
+  let detail: string;
+  if (!status.enabled) {
+    detail = t("settings.pricing.online.off");
+  } else if (status.model_count > 0 && updated) {
+    detail = t("settings.pricing.online.updated", { date: fmtDate(updated), count: status.model_count });
+  } else {
+    detail = t("settings.pricing.online.notYet");
+  }
+  if (status.enabled && status.last_error) {
+    detail += ` · ${t("settings.pricing.online.failed")}`;
+  }
+
+  return (
+    <div className="notif-form">
+      <div className="notif-form-row">
+        <div className="label-col">
+          <div id="online-prices-label" className="lbl">
+            {t("settings.pricing.online.label")}
+          </div>
+          <div className="hint">{t("settings.pricing.online.hint")}</div>
+          <div className="hint" title={status.last_error ?? undefined}>
+            {detail}
+          </div>
+        </div>
+        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+          {status.enabled && (
+            <button
+              type="button"
+              className="btn btn-secondary btn-small"
+              onClick={checkNow}
+              disabled={checking}
+              aria-busy={checking}
+            >
+              {checking ? t("settings.pricing.online.checking") : t("settings.pricing.online.checkNow")}
+            </button>
+          )}
+          <Switch
+            id="online-prices-switch"
+            checked={status.enabled}
+            onChange={toggle}
+            labelledBy="online-prices-label"
+          />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
 // PricingCard
 // ---------------------------------------------------------------------------
 
@@ -158,6 +245,8 @@ export function PricingCard() {
           {busy ? t("settings.pricing.repricing") : t("settings.pricing.reprice")}
         </button>
       </div>
+
+      <OnlinePricesRow />
 
       {/* Unpriced warning — conditional */}
       <UnpricedWarningStrip models={unpricedModels} t={t} />

@@ -1,5 +1,6 @@
 import type { Session } from "./types";
 import { getOpenRouterModel } from "./lib/openrouter-pricing";
+import { getCatalogModel } from "./lib/price-catalog";
 
 // ---------------------------------------------------------------------------
 // Pricing entry type — used by the Settings Pricing card
@@ -119,10 +120,11 @@ export const PRICING_TABLE: PricingEntry[] = [
 // reversed vendor forms like "claude-5-sonnet-anthropic" — so we match on the
 // family keyword rather than on exact slugs.
 //
-// Anthropic family matching is followed by exact, first-party documented
-// non-Anthropic IDs. Anything else falls back to the generated OpenRouter
-// table, then remains "rate unknown"; charging an unknown model at a guessed
-// rate produces confident wrong numbers, which is worse.
+// Exact, first-party documented non-Anthropic IDs come first, then Anthropic
+// family matching. Anything else falls back to the downloaded price catalog
+// (lib/price-catalog.ts), then the bundled OpenRouter snapshot, then remains
+// "rate unknown"; charging an unknown model at a guessed rate produces
+// confident wrong numbers, which is worse.
 //
 // ponytail: rates are current-only, not effective-dated. Known gap: Claude
 // Sonnet 5 bills at an introductory $2/$10 through 2026-08-31, so Sonnet 5
@@ -178,13 +180,26 @@ export function rateFor(model: string | null): Rate | null {
 }
 
 /**
- * Fallback rates for non-Anthropic models from the generated OpenRouter table.
+ * Fallback rates for non-Anthropic models: the downloaded catalog first, then
+ * the snapshot bundled with the app. Both are OpenRouter's list, keyed by its
+ * namespaced ids.
  *
  * Codex logs a bare model id ("gpt-5.6-terra"); OpenRouter namespaces it
  * ("openai/gpt-5.6-terra"). Exact, official rates for observed Codex models
- * take priority in `rateFor`; anything that matches neither remains unknown.
+ * take priority in `rateFor`; anything that matches none remains unknown.
  */
 function openRouterRate(model: string): Rate | null {
+  const downloaded = getCatalogModel(model) ?? getCatalogModel(`openai/${model}`);
+  if (downloaded) {
+    return {
+      inputPerMtok: downloaded.inputPerMtok,
+      outputPerMtok: downloaded.outputPerMtok,
+      cacheWrite5mPerMtok: downloaded.cacheWritePerMtok,
+      cacheWrite1hPerMtok: downloaded.cacheWrite1hPerMtok || downloaded.cacheWritePerMtok,
+      cacheReadPerMtok: downloaded.cacheReadPerMtok,
+    };
+  }
+
   const entry = getOpenRouterModel(model) ?? getOpenRouterModel(`openai/${model}`);
   if (!entry) return null;
   // OpenRouter uses negative sentinel values (e.g. -1_000_000) for router

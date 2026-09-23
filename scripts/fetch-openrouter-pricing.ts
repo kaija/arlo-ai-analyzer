@@ -1,23 +1,46 @@
 #!/usr/bin/env node
 /**
  * Fetches the current model list from the OpenRouter API and regenerates
- * src/lib/openrouter-pricing.ts.
+ * src/lib/openrouter-pricing.ts (the snapshot bundled with the app) and/or
+ * the trimmed `models.json` catalog published on GitHub Pages, which the app
+ * downloads once a day (src-tauri/src/catalog.rs).
  *
  * Usage:
  *   node --experimental-strip-types scripts/fetch-openrouter-pricing.ts
+ *   # bundled snapshot plus the published catalog:
+ *   node --experimental-strip-types scripts/fetch-openrouter-pricing.ts --json _site/models.json
+ *   # published catalog only (CI):
+ *   node --experimental-strip-types scripts/fetch-openrouter-pricing.ts --json _site/models.json --no-ts
  *   # or via Makefile:
  *   make update-openrouter-pricing
+ *
+ * Exits non-zero, writing nothing, when the response looks broken (fewer than
+ * MIN_MODELS models or a non-finite rate) — CI must not publish a bad list.
  *
  * The OPENROUTER_API_KEY environment variable is optional — the public
  * /models endpoint does not require authentication.
  */
 
-import { writeFileSync } from "fs";
-import { join, dirname } from "path";
+import { mkdirSync, writeFileSync } from "fs";
+import { join, dirname, resolve } from "path";
 import { fileURLToPath } from "url";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const OUT_PATH = join(__dirname, "../src/lib/openrouter-pricing.ts");
+
+const args = process.argv.slice(2);
+const jsonFlag = args.indexOf("--json");
+const JSON_PATH = jsonFlag >= 0 ? args[jsonFlag + 1] : null;
+if (jsonFlag >= 0 && !JSON_PATH) {
+  console.error("--json needs an output path");
+  process.exit(1);
+}
+const WRITE_TS = !args.includes("--no-ts");
+
+/** Must match MIN_MODELS in src-tauri/src/catalog.rs. */
+const MIN_MODELS = 50;
+/** Must match SCHEMA_VERSION in src-tauri/src/catalog.rs. */
+const SCHEMA_VERSION = 1;
 
 // ---------------------------------------------------------------------------
 // Fetch
@@ -129,7 +152,57 @@ for (const m of models) {
 }
 
 // ---------------------------------------------------------------------------
-// Emit
+// Validate — the app applies the same checks before trusting a download
+// ---------------------------------------------------------------------------
+
+if (out.length < MIN_MODELS) {
+  console.error(`Only ${out.length} models in the OpenRouter response (need ${MIN_MODELS}); refusing to write.`);
+  process.exit(1);
+}
+for (const m of out) {
+  const rates = [m.promptPerMtok, m.completionPerMtok, m.cacheReadPerMtok, m.cacheWritePerMtok, m.cacheWrite1hPerMtok];
+  if (rates.some((r) => !Number.isFinite(r) || r < 0)) {
+    console.error(`Invalid rate for ${m.id}; refusing to write.`);
+    process.exit(1);
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Emit models.json — the published catalog (format read by catalog.rs)
+// ---------------------------------------------------------------------------
+
+if (JSON_PATH) {
+  const catalog = {
+    schemaVersion: SCHEMA_VERSION,
+    generatedAt: new Date().toISOString().replace(/\.\d{3}Z$/, "Z"),
+    source: "https://openrouter.ai/api/v1/models",
+    models: Object.fromEntries(
+      [...out]
+        .sort((a, b) => a.id.localeCompare(b.id))
+        .map((m) => [
+          m.id,
+          {
+            name: m.name,
+            contextLength: m.contextLength,
+            inputPerMtok: m.promptPerMtok,
+            outputPerMtok: m.completionPerMtok,
+            cacheReadPerMtok: m.cacheReadPerMtok,
+            cacheWritePerMtok: m.cacheWritePerMtok,
+            cacheWrite1hPerMtok: m.cacheWrite1hPerMtok,
+          },
+        ]),
+    ),
+  };
+  const path = resolve(JSON_PATH);
+  mkdirSync(dirname(path), { recursive: true });
+  writeFileSync(path, JSON.stringify(catalog), "utf8");
+  console.log(`Written ${out.length} models to ${path}`);
+}
+
+if (!WRITE_TS) process.exit(0);
+
+// ---------------------------------------------------------------------------
+// Emit src/lib/openrouter-pricing.ts — the snapshot bundled with the app
 // ---------------------------------------------------------------------------
 
 const today = new Date().toISOString().slice(0, 10);

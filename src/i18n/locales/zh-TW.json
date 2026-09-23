@@ -88,7 +88,17 @@
       "footerNote": "費率為每百萬 Token（$/Mtok），依 Anthropic 公告為準。快取寫入 1 小時與快取寫入 5 分鐘費率相同。實際費用可能有所不同，請至 anthropic.com/pricing 查詢最新費率。",
       "unpricedWarning": "找不到 {{models}} 的定價。費用估算可能不準確。",
       "introductory": "導入期",
-      "standard": "標準"
+      "standard": "標準",
+      "online": {
+        "label": "線上更新模型價格",
+        "hint": "每天下載一次公開價格表，用於下表未列出的模型。不會傳送任何使用資料。",
+        "updated": "更新於 {{date}} · {{count}} 個模型",
+        "notYet": "尚未下載",
+        "off": "已關閉 — 使用 App 內建價格",
+        "failed": "上次檢查失敗",
+        "checkNow": "立即檢查",
+        "checking": "檢查中…"
+      }
     },
     "database": {
       "title": "本地資料庫",

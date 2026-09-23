@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Arlo AI Analyzer</title>
+  <meta name="description" content="A local-first macOS app that turns your Claude Code and Codex CLI logs into token and cost reports.">
+  <link rel="icon" href="icon.png">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+<main>
+  <header class="hero">
+    <img src="icon.png" alt="">
+    <div>
+      <h1>Arlo AI Analyzer</h1>
+      <p class="tagline">See where your AI coding tokens and dollars go — on your Mac, from your own logs.</p>
+    </div>
+  </header>
+
+  <ul class="features">
+    <li><strong>Reads the logs you already have</strong>Claude Code and Codex CLI session logs, with read-only access to the folders you choose.</li>
+    <li><strong>Tokens, cost and context, per session</strong>Daily spend, cache usage, context-window peaks and compactions, model by model.</li>
+    <li><strong>Local-first</strong>Your sessions never leave your Mac. The only network request is an anonymous daily download of the public model price list, and you can turn it off.</li>
+  </ul>
+
+  <nav class="links">
+    <a href="privacy.html">Privacy policy</a>
+    <a href="https://github.com/kaija/arlo-ai-analyzer/issues">Support</a>
+    <a href="https://github.com/kaija/arlo-ai-analyzer">Source on GitHub</a>
+    <a href="models.json">Model price catalog (JSON)</a>
+  </nav>
+
+  <footer>Model prices are republished daily from OpenRouter's public model list.</footer>
+</main>
+</body>
+</html>

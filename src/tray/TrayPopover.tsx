@@ -11,6 +11,7 @@ import {
   type DailySpendAlertSettings,
 } from "../lib/spend-alert";
 import { fmtCost } from "../lib/format";
+import { loadPriceCatalog } from "../lib/price-catalog";
 
 // ---------------------------------------------------------------------------
 // TrayPopover — the page inside the menu-bar popover window (`#/tray`).
@@ -54,6 +55,8 @@ export function TrayPopover() {
 
   const load = useCallback(async () => {
     await syncAppearance();
+    // Separate webview, separate module state: install the catalog here too.
+    await loadPriceCatalog();
     const sessions = await invoke<Session[]>("list_sessions").catch(() => [] as Session[]);
     setView({ sessions, settings: readDailySpendAlertSettings(), now: new Date() });
   }, []);

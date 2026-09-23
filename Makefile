@@ -1,4 +1,4 @@
-.PHONY: dev build release install clean lint test help
+.PHONY: dev build release install clean lint test help site update-openrouter-pricing
 
 # Default target
 .DEFAULT_GOAL := help
@@ -49,9 +49,13 @@ lint-rust:
 lint-frontend:
 	pnpm tsc --noEmit -p tsconfig.json && pnpm tsc --noEmit -p tsconfig.test.json
 
-## update-openrouter-pricing: Re-fetch OpenRouter model list and regenerate src/lib/openrouter-pricing.ts
+## update-openrouter-pricing: Re-fetch OpenRouter model list and regenerate src/lib/openrouter-pricing.ts (run before each release)
 update-openrouter-pricing:
 	node --experimental-strip-types scripts/fetch-openrouter-pricing.ts
+
+## site: Build the GitHub Pages site (landing, privacy, models.json) into _site/
+site:
+	./scripts/build-site.sh _site
 
 ## clean: Remove build artifacts
 clean:

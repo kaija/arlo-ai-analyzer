@@ -32,3 +32,6 @@ src-tauri/embedded.provisionprofile
 *.njsproj
 *.sln
 *.sw?
+
+# GitHub Pages build output (make site)
+_site/

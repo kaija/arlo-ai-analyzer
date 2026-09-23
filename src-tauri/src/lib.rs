@@ -1,11 +1,13 @@
 mod access;
 mod bookmark;
+mod catalog;
 mod tray;
 
 use std::path::{Path, PathBuf};
-use std::sync::Mutex;
+use std::sync::{Arc, Mutex};
 
 use access::{AccessConfig, DataAccess, Granted};
+use catalog::{Catalog, CatalogService, CatalogStatus};
 use notify::RecommendedWatcher;
 use tauri::{AppHandle, Emitter, Manager};
 use tauri_plugin_dialog::DialogExt;
@@ -15,6 +17,7 @@ struct AppState {
     data_dir: PathBuf,
     db: Mutex<Db>,
     sources: Mutex<Sources>,
+    catalog: Arc<CatalogService>,
 }
 
 /// Where data is read from right now. Replaced as a whole whenever the user
@@ -212,6 +215,36 @@ fn set_sample_data(app: AppHandle, enabled: bool) -> Result<DataAccess, String> 
     apply_config(&app, config, granted)
 }
 
+/// The downloaded price catalog, or null while online updates are off or
+/// nothing valid has been downloaded yet.
+#[tauri::command]
+fn get_price_catalog(state: tauri::State<AppState>) -> Option<Catalog> {
+    state.catalog.catalog()
+}
+
+#[tauri::command]
+fn get_price_catalog_status(state: tauri::State<AppState>) -> CatalogStatus {
+    state.catalog.status()
+}
+
+#[tauri::command]
+fn set_price_catalog_enabled(state: tauri::State<AppState>, app: AppHandle, enabled: bool) -> CatalogStatus {
+    state.catalog.set_enabled(&app, enabled);
+    state.catalog.status()
+}
+
+/// "Check now" in Settings. Blocks on the network, so it runs off the main thread.
+#[tauri::command]
+async fn check_price_catalog(app: AppHandle) -> Result<CatalogStatus, String> {
+    let service = app.state::<AppState>().catalog.clone();
+    tauri::async_runtime::spawn_blocking(move || {
+        service.check_now(&app)?;
+        Ok(service.status())
+    })
+    .await
+    .map_err(|e| e.to_string())?
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
@@ -236,8 +269,10 @@ pub fn run() {
             db.upsert_sessions(&initial).map_err(|e| e.to_string())?;
 
             let watcher = start_watcher(app.handle(), &roots);
+            let catalog = CatalogService::start(app.handle(), data_dir.clone());
             app.manage(AppState {
                 data_dir,
+                catalog,
                 db: Mutex::new(db),
                 sources: Mutex::new(Sources { config, granted, roots, _watcher: watcher }),
             });
@@ -255,6 +290,10 @@ pub fn run() {
             grant_source_access,
             clear_source_access,
             set_sample_data,
+            get_price_catalog,
+            get_price_catalog_status,
+            set_price_catalog_enabled,
+            check_price_catalog,
             tray::show_tray_popover,
             tray::tray_popover_ready,
             tray::hide_tray_popover,

@@ -1,6 +1,6 @@
 # Privacy Policy
 
-**Effective date:** September 20, 2026
+**Effective date:** September 23, 2026
 
 Arlo AI Analyzer is a local-first macOS application. The developer does not collect personal data, usage analytics, diagnostic information, or the contents of your AI coding sessions through the app.
 
@@ -9,6 +9,10 @@ Arlo AI Analyzer is a local-first macOS application. The developer does not coll
 With read-only permission, Arlo AI Analyzer reads session logs created by supported tools, including Claude Code and Codex CLI. It uses this information locally to calculate and display statistics such as token and request counts, model and project metadata, context usage, and estimated costs.
 
 Derived analytics are stored in a local SQLite database on your Mac. Arlo AI Analyzer does not transmit session logs or derived analytics to the developer or third parties.
+
+## Model Price Updates
+
+To estimate costs for models not in its built-in price table, Arlo AI Analyzer downloads a public list of model prices from https://ai-analyzer.arlo-ai.app/models.json, at most once a day. The request is the same for every user and contains no information about you, your sessions, or the models you use. As with any web request, the hosting provider (GitHub Pages) receives your IP address and the time of the request. You can turn this off in Settings → Pricing → "Update model prices online"; the app then makes no network requests and uses only its built-in prices.
 
 ## Accounts, Tracking, and Advertising
 

@@ -43,6 +43,24 @@ export async function invoke<T = unknown>(cmd: string, _args?: unknown): Promise
       ],
     } as unknown as T;
   }
+  if (cmd === "get_price_catalog") {
+    return null as unknown as T;
+  }
+  if (
+    cmd === "get_price_catalog_status" ||
+    cmd === "set_price_catalog_enabled" ||
+    cmd === "check_price_catalog"
+  ) {
+    return {
+      enabled: (_args as { enabled?: boolean } | undefined)?.enabled ?? true,
+      url: "https://ai-analyzer.arlo-ai.app/models.json",
+      last_checked: null,
+      last_updated: null,
+      last_error: null,
+      generated_at: null,
+      model_count: 0,
+    } as unknown as T;
+  }
   return undefined as unknown as T;
 }
 

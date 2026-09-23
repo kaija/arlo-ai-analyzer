@@ -88,7 +88,17 @@
       "footerNote": "Rates are per million tokens ($/Mtok) as published by Anthropic. Cache write 1h is charged at the same rate as cache write 5m. Actual costs may vary; check anthropic.com/pricing for the latest rates.",
       "unpricedWarning": "Pricing not found for {{models}}. Cost estimates may be inaccurate.",
       "introductory": "Introductory",
-      "standard": "Standard"
+      "standard": "Standard",
+      "online": {
+        "label": "Update model prices online",
+        "hint": "Once a day, downloads the public price list for models not in the table below. Nothing about your usage is sent.",
+        "updated": "Updated {{date}} · {{count}} models",
+        "notYet": "Not downloaded yet",
+        "off": "Off — using the prices built into the app",
+        "failed": "last check failed",
+        "checkNow": "Check now",
+        "checking": "Checking…"
+      }
     },
     "database": {
       "title": "Local database",

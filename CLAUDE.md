@@ -4,8 +4,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What this is
 
-Tauri 2 desktop app that reads local AI coding-tool logs and reports tokens/cost. Fully offline — no
-network calls, no vendor APIs. Claude Code (`~/.claude/projects`) and Codex CLI (`~/.codex/sessions`)
+Tauri 2 desktop app that reads local AI coding-tool logs and reports tokens/cost. Offline except one
+anonymous daily fetch of the model price catalog (switchable off in Settings); no vendor APIs. Claude Code (`~/.claude/projects`) and Codex CLI (`~/.codex/sessions`)
 are implemented; Cursor and Gemini CLI are deliberate stubs
 (`crates/usage-core/src/sources/*.rs`) that return empty vecs.
 
@@ -117,19 +117,41 @@ These are load-bearing; they were derived from real transcripts and the tests pi
   title call with a different window.
 - Compactions come from explicit `compact_boundary` records, not inferred from curve drops.
 
-### Pricing lives in three places
+### Pricing lives in four places
 
 | File | Role |
 |---|---|
 | `crates/usage-core/src/pricing.rs` | authoritative — per-request cost accumulated at parse time into `Session.cost_usd` |
 | `src/pricing.ts` | mirror of the same rates for UI display and fallback `estimatedCostUsd()` |
-| `src/lib/openrouter-pricing.ts` | auto-generated from the OpenRouter API — do not hand-edit; `rateFor` falls back to it for non-Anthropic models (Codex's `gpt-*` ids resolve as `openai/<id>`) |
+| `src/lib/price-catalog.ts` | the downloaded catalog (below) — `rateFor` tries it after the hand-written tables |
+| `src/lib/openrouter-pricing.ts` | auto-generated from the OpenRouter API — do not hand-edit; bundled fallback when there's no downloaded catalog. Refresh with `make update-openrouter-pricing` before each release |
+
+`rateFor` order: documented non-Anthropic ids → Claude family match → downloaded catalog → bundled
+snapshot → `null`. Catalog and snapshot lookups also try `openai/<id>` (Codex logs bare ids).
 
 Both hand-written tables are Anthropic-only, so Codex sessions arrive with `cost_usd` 0 and are
 priced on the front end from the OpenRouter table. Both derive cache rates from the input rate
 (5m write ×1.25, 1h write ×2, read ×0.1) rather than transcribing five numbers per model.
 An unknown model returns `None`/`null`, which means **unknown, not free** — the UI must render "—",
 never `$0.00`. Keep `pricing.rs` and `pricing.ts` in sync when adding a model.
+
+### The price catalog (the app's only network call)
+
+`.github/workflows/pages.yml` runs daily (and on pushes touching `site/**`, `PRIVACY.md`, the
+scripts) and deploys `scripts/build-site.sh`'s output to GitHub Pages at
+`https://ai-analyzer.arlo-ai.app/`: `site/` pages, `privacy.html` rendered from `PRIVACY.md`, and
+`models.json` — OpenRouter's list trimmed to `{schemaVersion, generatedAt, source, models{id → rates}}`.
+A Pages deploy replaces the whole site, so anything served there must be built by that script.
+
+`src-tauri/src/catalog.rs` downloads the **whole** file — never a per-model lookup, so requests
+reveal nothing and self-hosted models that will never be listed can't cause repeated fetches. One
+conditional GET (`ETag`) per day with jitter; failures back off 1h → 4h → 24h. `validate()` (same
+checks as the script: `schemaVersion` 1, ≥50 models, finite non-negative rates) must pass before a
+download replaces `model-catalog.json`. An incompatible format goes to a new path
+(`models.v2.json`), never a bumped version at the same URL. With the switch off,
+`get_price_catalog` returns null and no request is made. `price-catalog-updated` makes
+`SessionsContext` reinstall it and replace the sessions array so cost memos recompute; the tray
+popover loads it separately (own webview, own module state).
 
 ## Conventions
 

@@ -1,0 +1,57 @@
+# Publishes https://ai-analyzer.arlo-ai.app/: the landing page, the privacy
+# policy, and models.json — the model price catalog the app downloads at most
+# once a day (src-tauri/src/catalog.rs). The catalog is rebuilt from
+# OpenRouter's public model list on every run; nothing is committed back.
+#
+# If OpenRouter's answer looks broken, scripts/fetch-openrouter-pricing.ts
+# exits non-zero, the job fails before deploying, and the site keeps
+# yesterday's file.
+name: Pages
+
+on:
+  schedule:
+    # Daily, off the top of the hour when GitHub's scheduler is busiest.
+    - cron: "17 3 * * *"
+  push:
+    branches: [main]
+    paths:
+      - "site/**"
+      - "PRIVACY.md"
+      - "scripts/build-site.sh"
+      - "scripts/fetch-openrouter-pricing.ts"
+      - ".github/workflows/pages.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+      - name: Build site
+        run: ./scripts/build-site.sh _site
+      - uses: actions/configure-pages@v6
+      - uses: actions/upload-pages-artifact@v5
+        with:
+          path: _site
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v5
