@@ -7,6 +7,12 @@ export const TOOL_LABELS: Record<ToolKind, string> = {
   codex_cli: "Codex CLI",
 };
 
+/** Where each tool keeps its logs by default, shown in the folder picker's prompt. */
+export const DEFAULT_LOG_PATHS: Partial<Record<ToolKind, string>> = {
+  claude_code: "~/.claude/projects",
+  codex_cli: "~/.codex/sessions",
+};
+
 export interface Session {
   tool: ToolKind;
   session_id: string;
@@ -233,4 +239,25 @@ export interface ContextHealthRow {
 export interface SkillRow {
   skill: string;
   requests: number;
+}
+
+/** Where one tool's logs are read from — mirrors `SourceAccess` in src-tauri/src/access.rs. */
+export interface SourceAccess {
+  tool: ToolKind;
+  /** Folder scanned for this tool: the granted one, else the default location. */
+  path: string | null;
+  /** The user picked this folder (kept across launches by a bookmark). */
+  granted: boolean;
+  /** The folder exists and can be read right now. */
+  readable: boolean;
+  /** The folder exists, readable or not — i.e. the tool is installed here. */
+  detected: boolean;
+}
+
+export interface DataAccess {
+  /** Generated sample data is shown instead of the user's logs. */
+  sample: boolean;
+  /** App Store build: only folders the user granted are readable. */
+  sandboxed: boolean;
+  sources: SourceAccess[];
 }

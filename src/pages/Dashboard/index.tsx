@@ -32,7 +32,7 @@ import { WarnStrip } from "./WarnStrip";
 import { StatTilesRow } from "./StatTilesRow";
 import { UsageChartCard } from "./UsageChartCard";
 import { BreakdownTables } from "./BreakdownTables";
-import { EmptyState } from "./EmptyState";
+import { Onboarding } from "./Onboarding";
 import { ScanState } from "./ScanState";
 
 // ---------------------------------------------------------------------------
@@ -430,6 +430,16 @@ export default function DashboardPage() {
   // Render
   // ---------------------------------------------------------------------------
 
+  // Nothing to chart yet: setup takes the whole page instead of a row of $0 tiles.
+  if (showEmpty) {
+    return (
+      <div className="dashboard-page">
+        <h1 className="sr-only">Dashboard</h1>
+        <Onboarding />
+      </div>
+    );
+  }
+
   return (
     <div className="dashboard-page">
       {/* Screen-reader page heading — topbar title is visual-only (req 9.2) */}
@@ -586,7 +596,7 @@ export default function DashboardPage() {
         />
 
         {/* Usage chart */}
-        {!showEmpty && !showScanning && (
+        {!showScanning && (
           <div className="section-gap">
             <UsageChartCard
               buckets={bucketData}
@@ -606,7 +616,7 @@ export default function DashboardPage() {
         )}
 
         {/* Breakdown tables */}
-        {!showEmpty && !showScanning && (
+        {!showScanning && (
           <div className="section-gap">
             <BreakdownTables
               sessions={filteredSessions}
@@ -617,12 +627,7 @@ export default function DashboardPage() {
           </div>
         )}
 
-        {/* Empty / scan states — full-page centering via padding-top */}
-        {showEmpty && (
-          <div style={{ paddingTop: "80px" }}>
-            <EmptyState />
-          </div>
-        )}
+        {/* Scan state — full-page centering via padding-top */}
         {showScanning && (
           <div style={{ paddingTop: "80px" }}>
             <ScanState />

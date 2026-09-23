@@ -22,7 +22,7 @@ export default function SettingsPage() {
   const location = useLocation();
 
   useEffect(() => {
-    if (location.hash !== "#pricing" && location.hash !== "#daily-spend-alert") return;
+    if (!["#pricing", "#daily-spend-alert", "#logs-directory"].includes(location.hash)) return;
 
     const card = document.getElementById(location.hash.slice(1));
     card?.scrollIntoView({ block: "start" });

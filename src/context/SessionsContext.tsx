@@ -9,7 +9,7 @@ import {
 } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
-import type { Session } from "../types";
+import type { DataAccess, Session, ToolKind } from "../types";
 
 // ---------------------------------------------------------------------------
 // State shape
@@ -22,6 +22,16 @@ interface SessionsState {
   scanError: string | null;
   refresh: () => Promise<void>;
   triggerRescan: () => Promise<void>;
+  /** Which folders are read; null until the first answer from the backend. */
+  access: DataAccess | null;
+  /**
+   * Open the folder picker for a tool's logs; `title` is the panel's prompt.
+   * Resolves to the new access state — unchanged if the user cancelled.
+   */
+  grantAccess: (tool: ToolKind, title: string) => Promise<DataAccess>;
+  /** Forget a picked folder; the tool falls back to its default location. */
+  clearAccess: (tool: ToolKind) => Promise<DataAccess>;
+  setSampleData: (enabled: boolean) => Promise<DataAccess>;
 }
 
 // ---------------------------------------------------------------------------
@@ -41,6 +51,7 @@ export function SessionsProvider({ children }: { children: ReactNode }) {
     "idle" | "scanning" | "done" | "error"
   >("idle");
   const [scanError, setScanError] = useState<string | null>(null);
+  const [access, setAccess] = useState<DataAccess | null>(null);
 
   // Used to debounce the "usage-updated" event re-fetch (500 ms)
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -77,9 +88,37 @@ export function SessionsProvider({ children }: { children: ReactNode }) {
     }
   }, [refresh]);
 
+  // The access commands rescan and emit "usage-updated" themselves; refreshing
+  // here as well just makes the new sessions show up without the debounce.
+  const changeAccess = useCallback(
+    async (cmd: string, args: Record<string, unknown>) => {
+      const next = await invoke<DataAccess>(cmd, args);
+      setAccess(next);
+      await refresh();
+      return next;
+    },
+    [refresh],
+  );
+
+  const grantAccess = useCallback(
+    (tool: ToolKind, title: string) => changeAccess("grant_source_access", { tool, title }),
+    [changeAccess],
+  );
+  const clearAccess = useCallback(
+    (tool: ToolKind) => changeAccess("clear_source_access", { tool }),
+    [changeAccess],
+  );
+  const setSampleData = useCallback(
+    (enabled: boolean) => changeAccess("set_sample_data", { enabled }),
+    [changeAccess],
+  );
+
   useEffect(() => {
     // Initial load
     refresh();
+    invoke<DataAccess>("get_data_access")
+      .then(setAccess)
+      .catch(() => {});
 
     // Listen for backend "usage-updated" events; debounce re-fetches by 500 ms
     const unlistenPromise = listen("usage-updated", () => {
@@ -101,7 +140,18 @@ export function SessionsProvider({ children }: { children: ReactNode }) {
 
   return (
     <SessionsContext.Provider
-      value={{ sessions, loading, scanState, scanError, refresh, triggerRescan }}
+      value={{
+        sessions,
+        loading,
+        scanState,
+        scanError,
+        refresh,
+        triggerRescan,
+        access,
+        grantAccess,
+        clearAccess,
+        setSampleData,
+      }}
     >
       {children}
     </SessionsContext.Provider>

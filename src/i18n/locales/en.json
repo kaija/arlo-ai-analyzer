@@ -60,12 +60,17 @@
     },
     "logsDirectory": {
       "title": "Logs directory",
-      "subtitle": "Arlo reads Claude Code transcripts from this path — nothing leaves your machine.",
-      "currentPath": "Current logs directory path",
-      "change": "Change…",
+      "subtitle": "Arlo reads Claude Code and Codex CLI logs from these folders — nothing leaves your machine.",
       "rescan": "Re-scan",
       "scanning": "Scanning…",
-      "scanFailed": "Scan failed"
+      "scanFailed": "Scan failed",
+      "connected": "Connected",
+      "notConnected": "Not connected",
+      "choose": "Choose…",
+      "forget": "Forget",
+      "sampleTitle": "Sample data",
+      "sampleDescription": "Show generated example sessions instead of your logs.",
+      "sampleOn": "Show sample data"
     },
     "pricing": {
       "title": "Pricing",
@@ -109,5 +114,25 @@
     "setBudget": "Set daily budget",
     "menuOpen": "Open Arlo AI Analyzer",
     "menuQuit": "Quit Arlo AI Analyzer"
+  },
+  "dataAccess": {
+    "connectedNoSessions": "{{tool}} folder connected — no sessions found yet.",
+    "trySample": "Explore with sample data",
+    "pickerTitle": "Select your {{tool}} logs folder ({{path}})",
+    "sampleBannerTitle": "You're viewing sample data",
+    "sampleBannerBody": "These sessions are generated examples. Connect your own logs to see your real usage.",
+    "exitSample": "Exit sample data",
+    "failed": "Could not update folder access",
+    "welcomeTitle": "Welcome to Arlo",
+    "welcomeBody": "Arlo shows what your AI coding tools use and cost, straight from the logs they keep on this Mac. Allow read-only access to get started — nothing leaves your machine.",
+    "sourcesLabel": "AI coding tools on this Mac",
+    "statusConnected": "Connected",
+    "statusFound": "Found",
+    "statusNotFound": "Not found",
+    "allow": "Allow access",
+    "allowAll": "Allow access to both",
+    "chooseFolder": "Choose folder…",
+    "hint": "macOS asks you to confirm each folder. It opens in the right place — just click Open.",
+    "noneFound": "No Claude Code or Codex CLI logs were found on this Mac. Choose a folder if you keep them elsewhere, or look around with sample data."
   }
 }

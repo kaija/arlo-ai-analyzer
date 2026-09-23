@@ -9,7 +9,7 @@ use std::path::{Path, PathBuf};
 
 /// Codex writes one rollout file per thread under `~/.codex/sessions/YYYY/MM/DD/`.
 pub fn default_root() -> Option<PathBuf> {
-    dirs::home_dir().map(|h| h.join(".codex").join("sessions"))
+    crate::paths::real_home_dir().map(|h| h.join(".codex").join("sessions"))
 }
 
 pub struct CodexCliSource {
@@ -308,12 +308,9 @@ fn parse_session_file(path: &Path, seen: &mut UsageKeys) -> Result<Option<Sessio
 ///
 /// Deduplication is file-local, matching Claude Code: the view shows what this
 /// rollout contains, including a prefix replayed from the parent thread.
-pub fn get_session_detail(session_id: &str) -> Result<SessionDetail> {
-    let Some(root) = default_root() else {
-        return Ok(empty_detail());
-    };
+pub fn get_session_detail(root: &Path, session_id: &str) -> Result<SessionDetail> {
     let mut files = Vec::new();
-    collect_jsonl(&root, &mut files);
+    collect_jsonl(root, &mut files);
     let Some(path) = files.into_iter().find(|p| session_id_from_path(p) == session_id) else {
         return Ok(empty_detail());
     };

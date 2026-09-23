@@ -60,12 +60,17 @@
     },
     "logsDirectory": {
       "title": "ログディレクトリ",
-      "subtitle": "ArloはこのパスからClaude Codeの記録を読み取ります。データはお使いのマシンから外部に送信されません。",
-      "currentPath": "現在のログディレクトリパス",
-      "change": "変更…",
+      "subtitle": "Arlo はこれらのフォルダから Claude Code と Codex CLI のログを読み取ります。データが外部に送信されることはありません。",
       "rescan": "再スキャン",
       "scanning": "スキャン中…",
-      "scanFailed": "スキャン失敗"
+      "scanFailed": "スキャン失敗",
+      "connected": "接続済み",
+      "notConnected": "未接続",
+      "choose": "選択…",
+      "forget": "解除",
+      "sampleTitle": "サンプルデータ",
+      "sampleDescription": "ご自身のログの代わりに生成されたサンプルセッションを表示します。",
+      "sampleOn": "サンプルデータを表示"
     },
     "pricing": {
       "title": "料金",
@@ -109,5 +114,25 @@
     "setBudget": "1日の予算を設定",
     "menuOpen": "Arlo AI Analyzer を開く",
     "menuQuit": "Arlo AI Analyzer を終了"
+  },
+  "dataAccess": {
+    "connectedNoSessions": "{{tool}} のフォルダは接続済みですが、セッションはまだ見つかりません。",
+    "trySample": "サンプルデータで試す",
+    "pickerTitle": "{{tool}} のログフォルダを選択（{{path}}）",
+    "sampleBannerTitle": "サンプルデータを表示中",
+    "sampleBannerBody": "これらのセッションは生成された例です。ご自身のログを接続すると実際の使用量を確認できます。",
+    "exitSample": "サンプルデータを終了",
+    "failed": "フォルダへのアクセスを更新できませんでした",
+    "welcomeTitle": "Arlo へようこそ",
+    "welcomeBody": "Arlo は、AI コーディングツールがこの Mac に保存しているログから、使用量とコストを表示します。読み取り専用のアクセスを許可して始めましょう。データが外部に送信されることはありません。",
+    "sourcesLabel": "この Mac の AI コーディングツール",
+    "statusConnected": "接続済み",
+    "statusFound": "検出済み",
+    "statusNotFound": "見つかりません",
+    "allow": "アクセスを許可",
+    "allowAll": "両方へのアクセスを許可",
+    "chooseFolder": "フォルダを選択…",
+    "hint": "macOS がフォルダごとに確認を求めます。正しい場所で開くので、「開く」をクリックするだけです。",
+    "noneFound": "この Mac で Claude Code または Codex CLI のログが見つかりませんでした。別の場所に保存している場合はフォルダを選択するか、サンプルデータで試してください。"
   }
 }

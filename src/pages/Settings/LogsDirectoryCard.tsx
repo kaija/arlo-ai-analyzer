@@ -1,48 +1,58 @@
 import { useState, useRef } from "react";
 import { useTranslation } from "react-i18next";
-import { invoke } from "@tauri-apps/api/core";
 import { useSessionsContext } from "../../context/SessionsContext";
+import { Switch } from "../../primitives/Switch";
+import { DEFAULT_LOG_PATHS, TOOL_LABELS, type SourceAccess } from "../../types";
 
 // ---------------------------------------------------------------------------
 // LogsDirectoryCard
 //
-// Shows the current logs directory in a read-only monospace path field with a
-// folder icon, with two action buttons:
-//   • "Change…" (secondary) — opens a Tauri directory picker
-//   • "Re-scan"  (primary)  — invokes triggerRescan()
+// One row per tool: the folder read (read-only monospace path field), whether
+// it is connected, "Choose…" (opens the folder picker — the only way the
+// sandboxed build gets read access) and "Forget" for a picked folder. Below:
+// the sample-data switch and "Re-scan" (invokes triggerRescan()).
 //
 // Requirements: 7.7, 7.8, 11.7, 12.3, 12.7, 12.9
 // ---------------------------------------------------------------------------
 
-const DEFAULT_LOGS_PATH = "~/.claude/projects";
-
 export function LogsDirectoryCard() {
   const { t } = useTranslation();
-  const { triggerRescan } = useSessionsContext();
+  const { triggerRescan, access, grantAccess, clearAccess, setSampleData } = useSessionsContext();
 
-  const [logsPath, setLogsPath] = useState<string>(DEFAULT_LOGS_PATH);
   const [scanBusy, setScanBusy] = useState<boolean>(false);
   const [scanError, setScanError] = useState<string | null>(null);
+  const [accessBusy, setAccessBusy] = useState<boolean>(false);
+  const [accessError, setAccessError] = useState<string | null>(null);
 
   const timerDoneRef = useRef<boolean>(false);
   const asyncDoneRef = useRef<boolean>(false);
 
   // --------------------------------------------------------------------------
-  // Change directory
+  // Folder access
   // --------------------------------------------------------------------------
 
-  const handleChange = async () => {
+  const runAccess = async (action: () => Promise<unknown>) => {
+    setAccessBusy(true);
+    setAccessError(null);
     try {
-      const selected = await invoke<string | null>("plugin:dialog|open", {
-        options: { directory: true },
-      });
-      if (selected !== null) {
-        setLogsPath(selected);
-      }
-    } catch {
-      // dialog plugin unavailable — silently ignore
+      await action();
+    } catch (err) {
+      setAccessError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setAccessBusy(false);
     }
   };
+
+  const handleChoose = (source: SourceAccess) =>
+    runAccess(() =>
+      grantAccess(
+        source.tool,
+        t("dataAccess.pickerTitle", {
+          tool: TOOL_LABELS[source.tool],
+          path: DEFAULT_LOG_PATHS[source.tool] ?? "",
+        }),
+      ),
+    );
 
   // --------------------------------------------------------------------------
   // Re-scan
@@ -83,7 +93,7 @@ export function LogsDirectoryCard() {
   };
 
   return (
-    <section className="card" aria-labelledby="logs-dir-card-heading">
+    <section id="logs-directory" className="card" aria-labelledby="logs-dir-card-heading" tabIndex={-1}>
       <div className="card-head">
         <div className="card-head-text">
           <h2 id="logs-dir-card-heading" className="card-title">{t("settings.logsDirectory.title")}</h2>
@@ -91,27 +101,69 @@ export function LogsDirectoryCard() {
         </div>
       </div>
 
-      <div className="path-row">
-        {/* Read-only path field with folder icon */}
-        <div
-          className="path-field"
-          role="group"
-          aria-label={t("settings.logsDirectory.currentPath")}
-        >
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-            <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>
-          </svg>
-          <span className="mono">{logsPath}</span>
+      <div className="notif-form">
+        {(access?.sources ?? []).map((source) => {
+          const labelId = `logs-dir-label-${source.tool}`;
+          return (
+            <div key={source.tool} className="notif-form-row">
+              <div className="label-col" style={{ flex: "1 1 auto", minWidth: 0 }}>
+                <div id={labelId} className="lbl">
+                  {TOOL_LABELS[source.tool]}
+                  {" · "}
+                  <span className="hint">
+                    {source.readable
+                      ? t("settings.logsDirectory.connected")
+                      : t("settings.logsDirectory.notConnected")}
+                  </span>
+                </div>
+                <div className="path-field" role="group" aria-labelledby={labelId} style={{ marginTop: "6px" }}>
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                    <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>
+                  </svg>
+                  <span className="mono">{source.path ?? DEFAULT_LOG_PATHS[source.tool]}</span>
+                </div>
+              </div>
+              <div style={{ display: "flex", gap: "8px", flex: "0 0 auto" }}>
+                {source.granted && (
+                  <button
+                    type="button"
+                    className="btn btn-secondary"
+                    disabled={accessBusy}
+                    onClick={() => runAccess(() => clearAccess(source.tool))}
+                  >
+                    {t("settings.logsDirectory.forget")}
+                  </button>
+                )}
+                <button
+                  type="button"
+                  className="btn btn-secondary"
+                  disabled={accessBusy}
+                  onClick={() => handleChoose(source)}
+                >
+                  {t("settings.logsDirectory.choose")}
+                </button>
+              </div>
+            </div>
+          );
+        })}
+
+        <div className="notif-form-row">
+          <div className="label-col">
+            <div id="logs-dir-sample-label" className="lbl">
+              {t("settings.logsDirectory.sampleTitle")}
+            </div>
+            <div className="hint">{t("settings.logsDirectory.sampleDescription")}</div>
+          </div>
+          <Switch
+            id="logs-dir-sample-switch"
+            checked={access?.sample ?? false}
+            onChange={(checked) => runAccess(() => setSampleData(checked))}
+            labelledBy="logs-dir-sample-label"
+          />
         </div>
+      </div>
 
-        <button
-          type="button"
-          className="btn btn-secondary"
-          onClick={handleChange}
-        >
-          {t("settings.logsDirectory.change")}
-        </button>
-
+      <div className="path-row" style={{ justifyContent: "flex-end" }}>
         <button
           type="button"
           className="btn btn-primary"
@@ -122,6 +174,12 @@ export function LogsDirectoryCard() {
           {scanBusy ? t("settings.logsDirectory.scanning") : t("settings.logsDirectory.rescan")}
         </button>
       </div>
+
+      {accessError !== null && (
+        <p role="alert" className="field-error-inline" style={{ padding: "0 24px 16px" }}>
+          {t("dataAccess.failed")}: {accessError}
+        </p>
+      )}
 
       {/* Inline error message */}
       {scanError !== null && (

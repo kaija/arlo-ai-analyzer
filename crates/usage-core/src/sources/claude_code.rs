@@ -8,7 +8,7 @@ use std::fs;
 use std::path::{Path, PathBuf};
 
 pub fn default_root() -> Option<PathBuf> {
-    dirs::home_dir().map(|h| h.join(".claude").join("projects"))
+    crate::paths::real_home_dir().map(|h| h.join(".claude").join("projects"))
 }
 
 pub struct ClaudeCodeSource {
@@ -304,7 +304,7 @@ fn parse_turn(value: &Value, message: &Value, line: u32) -> Turn {
 
 /// Return the per-request detail and compaction events for one session.
 ///
-/// We locate the `.jsonl` file by re-walking `~/.claude/projects/*/<session_id>.jsonl`.
+/// We locate the `.jsonl` file by re-walking `<root>/*/<session_id>.jsonl`.
 /// Returns an empty Vec (not an error) when the file cannot be found — the
 /// session may have been deleted or is from a different tool.
 ///
@@ -312,16 +312,13 @@ fn parse_turn(value: &Value, message: &Value, line: u32) -> Turn {
 /// transcript contains, including history replayed from a session it was
 /// resumed from. Session totals (`scan`) dedupe across files instead, so a
 /// resumed session's request count can exceed its billed request count.
-pub fn get_session_detail(session_id: &str) -> Result<SessionDetail> {
+pub fn get_session_detail(root: &Path, session_id: &str) -> Result<SessionDetail> {
     let empty = || SessionDetail {
         requests: vec![],
         compactions: vec![],
         transcript_path: None,
     };
-    let Some(root) = default_root() else {
-        return Ok(empty());
-    };
-    let Some(path) = find_session_file(&root, session_id) else {
+    let Some(path) = find_session_file(root, session_id) else {
         return Ok(empty());
     };
     let transcript = read_transcript(&path, &mut TurnKeys::default())?;

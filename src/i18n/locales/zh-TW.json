@@ -60,12 +60,17 @@
     },
     "logsDirectory": {
       "title": "日誌目錄",
-      "subtitle": "Arlo 從此路徑讀取 Claude Code 記錄，資料不會離開您的裝置。",
-      "currentPath": "目前日誌目錄路徑",
-      "change": "變更…",
+      "subtitle": "Arlo 從這些資料夾讀取 Claude Code 與 Codex CLI 紀錄——所有資料都不會離開你的電腦。",
       "rescan": "重新掃描",
       "scanning": "掃描中…",
-      "scanFailed": "掃描失敗"
+      "scanFailed": "掃描失敗",
+      "connected": "已連結",
+      "notConnected": "未連結",
+      "choose": "選擇…",
+      "forget": "移除",
+      "sampleTitle": "範例資料",
+      "sampleDescription": "以產生的範例工作階段取代你的紀錄。",
+      "sampleOn": "顯示範例資料"
     },
     "pricing": {
       "title": "定價",
@@ -109,5 +114,25 @@
     "setBudget": "設定每日預算",
     "menuOpen": "開啟 Arlo AI Analyzer",
     "menuQuit": "結束 Arlo AI Analyzer"
+  },
+  "dataAccess": {
+    "connectedNoSessions": "已連結 {{tool}} 資料夾，但尚未找到任何工作階段。",
+    "trySample": "使用範例資料瀏覽",
+    "pickerTitle": "選擇你的 {{tool}} 紀錄資料夾（{{path}}）",
+    "sampleBannerTitle": "目前顯示的是範例資料",
+    "sampleBannerBody": "這些工作階段是產生出來的範例。連結你自己的紀錄即可查看實際用量。",
+    "exitSample": "離開範例資料",
+    "failed": "無法更新資料夾存取權限",
+    "welcomeTitle": "歡迎使用 Arlo",
+    "welcomeBody": "Arlo 直接從 AI 程式開發工具儲存在這台 Mac 上的紀錄，顯示它們的用量與花費。允許唯讀存取即可開始——所有資料都不會離開你的電腦。",
+    "sourcesLabel": "這台 Mac 上的 AI 程式開發工具",
+    "statusConnected": "已連結",
+    "statusFound": "已偵測到",
+    "statusNotFound": "未找到",
+    "allow": "允許存取",
+    "allowAll": "允許存取兩者",
+    "chooseFolder": "選擇資料夾…",
+    "hint": "macOS 會請你確認每個資料夾。視窗會直接開在正確的位置，按「打開」即可。",
+    "noneFound": "在這台 Mac 上找不到 Claude Code 或 Codex CLI 的紀錄。若你把紀錄放在其他位置，請選擇資料夾，或先用範例資料看看。"
   }
 }

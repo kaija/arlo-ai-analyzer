@@ -2,6 +2,7 @@ import { Outlet } from "react-router-dom";
 import { Sidebar } from "./Sidebar";
 import { Topbar } from "./Topbar";
 import { TrayBridge } from "../tray/TrayBridge";
+import { SampleDataBanner } from "./SampleDataBanner";
 
 // ---------------------------------------------------------------------------
 // AppShell
@@ -22,6 +23,7 @@ export function AppShell() {
         <div className="titlebar-spacer" aria-hidden="true" />
 
         <Topbar />
+        <SampleDataBanner />
 
         <main className="content-scroll" aria-label="Page content">
           <Outlet />

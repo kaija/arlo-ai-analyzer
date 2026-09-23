@@ -28,9 +28,20 @@ export async function invoke<T = unknown>(cmd: string, _args?: unknown): Promise
     await new Promise((r) => setTimeout(r, 300));
     return undefined as unknown as T;
   }
-  // Tauri dialog plugin
-  if (cmd === "plugin:dialog|open") {
-    return null as unknown as T;
+  if (
+    cmd === "get_data_access" ||
+    cmd === "grant_source_access" ||
+    cmd === "clear_source_access" ||
+    cmd === "set_sample_data"
+  ) {
+    return {
+      sample: false,
+      sandboxed: false,
+      sources: [
+        { tool: "claude_code", path: "~/.claude/projects", granted: false, readable: false, detected: true },
+        { tool: "codex_cli", path: "~/.codex/sessions", granted: false, readable: false, detected: true },
+      ],
+    } as unknown as T;
   }
   return undefined as unknown as T;
 }

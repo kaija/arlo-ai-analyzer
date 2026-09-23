@@ -34,9 +34,35 @@ with vitest globals. A type error in a test only shows up in the second pass.
 **`crates/usage-core`** — all logic, no Tauri dependency, unit-testable alone.
 `UsageSource` trait (`tool()`, `scan() -> Vec<Session>`); `scan_all()` runs every source.
 
-**`src-tauri`** — thin. Four data commands (plus the tray's, below): `list_sessions`, `get_session_detail`, `rescan`,
-`reset_database`. On setup it scans, upserts, then leaks a `notify` watcher on
-`~/.claude/projects` that rescans and emits `usage-updated`.
+**`src-tauri`** — thin. Data commands (plus the tray's, below): `list_sessions`, `get_session_detail`, `rescan`,
+`reset_database`, and the folder-access ones `get_data_access`, `grant_source_access`,
+`clear_source_access`, `set_sample_data`. On setup it resolves the log roots, scans, upserts, and
+starts a `notify` watcher on them that rescans and emits `usage-updated`; the watcher is held in
+`AppState` and replaced whenever the roots change.
+
+### Sandbox and folder access (App Store build)
+
+The App Store build is sandboxed with **no** home-relative temporary exception (Apple rejected
+`/.codex/sessions/`). Things that follow from that:
+
+- `$HOME` is the app container inside the sandbox, so `dirs::home_dir()` is wrong for `~/.claude` —
+  use `usage_core::paths::real_home_dir()` (reads the password database).
+- The user picks each log folder in an `NSOpenPanel` (`tauri-plugin-dialog`, driven from Rust);
+  `src-tauri/src/bookmark.rs` keeps it as a security-scoped bookmark in `access.json`
+  (`src-tauri/src/access.rs`). Needs `com.apple.security.files.bookmarks.app-scope`. With no grant a
+  tool falls back to its default root, which is what makes the unsandboxed `make dev` work unchanged.
+- The sandbox still answers `stat` on ungranted paths, so `SourceAccess.detected` (exists) vs
+  `readable` (listable) tells onboarding which tools are installed but not yet allowed. Onboarding
+  (`src/pages/Dashboard/Onboarding.tsx`) replaces the whole dashboard while there are no sessions;
+  "Allow access to both" opens one picker per found tool in turn and stops on a cancel.
+- `com.apple.security.network.client` is required even though the app makes no network calls: a
+  sandboxed WKWebView renders a blank window without it.
+- Sample data (`usage_core::sample`) writes real-format transcripts under the data dir, relative to
+  now, and scans them with the normal parsers into a separate `usage-sample.sqlite3`. It is what
+  App Review sees on a machine with no logs — keep the empty state offering it.
+- To test the sandbox locally: `pnpm tauri build --debug --bundles app`, then ad-hoc
+  `codesign --force --deep -s - --entitlements <plist>` with the sandbox entitlements (minus the
+  team/keychain keys), and `rm -rf ~/Library/Containers/com.kaija.ai-analyzer` for a fresh start.
 
 **Tray (`src-tauri/src/tray.rs`)** — closing the main window hides it (and the Dock icon); the
 menu-bar icon brings it back, Quit is in its right-click menu. Left click shows the spend popover:
@@ -54,7 +80,7 @@ plus a 500 ms-debounced re-fetch on `usage-updated`. Providers nest Settings →
 
 ### The SQLite cache is derived data
 
-`~/…/app_data_dir/usage.sqlite3` is a pure cache of the transcripts. Schema changes are handled by
+`~/…/app_data_dir/usage.sqlite3` (and `usage-sample.sqlite3`) is a pure cache of the transcripts. Schema changes are handled by
 bumping `SCHEMA_VERSION` in [db.rs](crates/usage-core/src/db.rs) — the table is dropped and refilled,
 never `ALTER TABLE`d. Adding a `Session` field means: struct + schema + `SCHEMA_VERSION` + INSERT +
 UPDATE + SELECT (all in `db.rs`) + `src/types.ts`. `upsert_sessions` never deletes, so rows for

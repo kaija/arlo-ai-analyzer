@@ -10,11 +10,13 @@
   <true/>
   <key>com.apple.security.files.user-selected.read-only</key>
   <true/>
-  <key>com.apple.security.temporary-exception.files.home-relative-path.read-only</key>
-  <array>
-    <string>/.claude/projects/</string>
-    <string>/.codex/sessions/</string>
-  </array>
+  <key>com.apple.security.files.bookmarks.app-scope</key>
+  <true/>
+  <!-- Not for any network call of ours (the app is offline): a sandboxed
+       WKWebView cannot load even the bundled page without it, and the window
+       stays blank. -->
+  <key>com.apple.security.network.client</key>
+  <true/>
   <key>keychain-access-groups</key>
   <array>
     <string>H2ZM466J6A.*</string>
