@@ -62,7 +62,13 @@ impl UsageSource for ClaudeCodeSource {
                 .map(|n| n.to_string_lossy().to_string())
                 .unwrap_or_default();
 
-            let mut files: Vec<PathBuf> = fs::read_dir(&project_dir)?
+            // One unreadable folder or transcript must not blank out the rest:
+            // `scan_all` drops a source whose scan errors, and the cache keeps
+            // its stale rows, so new sessions would silently never show up.
+            let Ok(entries) = fs::read_dir(&project_dir) else {
+                continue;
+            };
+            let mut files: Vec<PathBuf> = entries
                 .flatten()
                 .map(|e| e.path())
                 .filter(|p| p.extension().and_then(|e| e.to_str()) == Some("jsonl"))
@@ -70,8 +76,10 @@ impl UsageSource for ClaudeCodeSource {
             files.sort();
 
             for path in files {
-                if let Some(session) = parse_session_file(&path, &fallback_project, &mut seen)? {
-                    sessions.push(session);
+                match parse_session_file(&path, &fallback_project, &mut seen) {
+                    Ok(Some(session)) => sessions.push(session),
+                    Ok(None) => {}
+                    Err(e) => eprintln!("skipping {}: {e:#}", path.display()),
                 }
             }
         }
@@ -145,7 +153,7 @@ struct Transcript {
 /// resumed session from being billed twice. Pass a fresh set to dedupe within
 /// this file only.
 fn read_transcript(path: &Path, seen: &mut TurnKeys) -> Result<Transcript> {
-    let content = fs::read_to_string(path)?;
+    let content = crate::sources::read_lossy(path)?;
 
     let mut project = None;
     let mut started_at = None;
@@ -492,6 +500,31 @@ mod tests {
         let source = ClaudeCodeSource::with_root(dir.path().to_path_buf());
         let sessions = source.scan().unwrap();
         assert!(sessions.is_empty());
+    }
+
+    #[test]
+    fn a_transcript_cut_mid_character_still_counts() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = write_session(dir.path(), "p", "33333333-3333-3333-3333-333333333333", &[assistant("m1", "r1", 5)]);
+        // A write still in flight: the first two bytes of "設" (E8 A8 AD).
+        let mut f = fs::OpenOptions::new().append(true).open(&path).unwrap();
+        f.write_all(b"{\"type\":\"user\",\"message\":\"\xE8\xA8").unwrap();
+
+        let sessions = ClaudeCodeSource::with_root(dir.path().to_path_buf()).scan().unwrap();
+        assert_eq!(sessions.len(), 1);
+        assert_eq!(sessions[0].output_tokens, 5);
+    }
+
+    #[test]
+    fn an_unreadable_transcript_does_not_hide_the_others() {
+        let dir = tempfile::tempdir().unwrap();
+        // Sorts first, and reading a directory fails.
+        fs::create_dir_all(dir.path().join("a").join("00000000-0000-0000-0000-000000000000.jsonl")).unwrap();
+        write_session(dir.path(), "a", "44444444-4444-4444-4444-444444444444", &[assistant("m1", "r1", 5)]);
+        write_session(dir.path(), "b", "55555555-5555-5555-5555-555555555555", &[assistant("m2", "r2", 7)]);
+
+        let sessions = ClaudeCodeSource::with_root(dir.path().to_path_buf()).scan().unwrap();
+        assert_eq!(sessions.len(), 2);
     }
 
     fn write_session(dir: &Path, project: &str, id: &str, lines: &[String]) -> PathBuf {

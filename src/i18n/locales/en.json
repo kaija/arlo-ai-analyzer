@@ -15,7 +15,9 @@
     "settings": "Settings"
   },
   "topbar": {
-    "toggleTheme": "Toggle theme"
+    "toggleTheme": "Toggle theme",
+    "rescan": "Rescan session folders",
+    "rescanning": "Scanning…"
   },
   "settings": {
     "language": {

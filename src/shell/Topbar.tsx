@@ -1,6 +1,7 @@
 import { useLocation } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { useSettingsContext } from "../context/SettingsContext";
+import { useSessionsContext } from "../context/SessionsContext";
 
 // ---------------------------------------------------------------------------
 // Page title mapping
@@ -63,6 +64,24 @@ function IconSun() {
   );
 }
 
+function IconRefresh() {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+      focusable="false"
+    >
+      <path d="M21 12a9 9 0 1 1-2.64-6.36"/>
+      <polyline points="21 3 21 9 15 9"/>
+    </svg>
+  );
+}
+
 // ---------------------------------------------------------------------------
 // Topbar
 // ---------------------------------------------------------------------------
@@ -70,6 +89,7 @@ function IconSun() {
 export function Topbar() {
   const location = useLocation();
   const { toggleTheme } = useSettingsContext();
+  const { rescanning, triggerRescan } = useSessionsContext();
   const { t } = useTranslation();
 
   const title = pathnameToTitle(location.pathname, t);
@@ -85,6 +105,17 @@ export function Topbar() {
       </span>
 
       <div className="topbar-actions">
+        {/* The file watcher can miss sessions; this re-reads every log folder. */}
+        <button
+          className="theme-toggle rescan-button"
+          onClick={() => void triggerRescan()}
+          disabled={rescanning}
+          aria-busy={rescanning}
+          aria-label={rescanning ? t("topbar.rescanning") : t("topbar.rescan")}
+          title={rescanning ? t("topbar.rescanning") : t("topbar.rescan")}
+        >
+          <IconRefresh />
+        </button>
         <button
           className="theme-toggle"
           onClick={toggleTheme}

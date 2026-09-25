@@ -35,6 +35,7 @@ vi.mock("../../context/SessionsContext", () => ({
     sessions: [unpricedSession],
     loading: false,
     scanState: "done",
+    rescanning: false,
   }),
 }));
 

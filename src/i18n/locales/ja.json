@@ -15,7 +15,9 @@
     "settings": "設定"
   },
   "topbar": {
-    "toggleTheme": "テーマを切り替える"
+    "toggleTheme": "テーマを切り替える",
+    "rescan": "セッションフォルダを再スキャン",
+    "rescanning": "スキャン中…"
   },
   "settings": {
     "language": {

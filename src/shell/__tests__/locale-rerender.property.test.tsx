@@ -20,6 +20,7 @@ import {
   type Locale,
 } from "../../context/LanguageContext";
 import { SettingsProvider } from "../../context/SettingsContext";
+import { SessionsProvider } from "../../context/SessionsContext";
 import { Sidebar } from "../Sidebar";
 import { Topbar } from "../Topbar";
 import i18n from "../../i18n/i18n";
@@ -125,7 +126,9 @@ async function renderTopbarAtPath(path: string, initialLocale: Locale) {
       <MemoryRouter initialEntries={[path]}>
         <LanguageProvider>
           <LanguageSwitchHarness />
-          <Topbar />
+          <SessionsProvider>
+            <Topbar />
+          </SessionsProvider>
         </LanguageProvider>
       </MemoryRouter>
     </SettingsProvider>

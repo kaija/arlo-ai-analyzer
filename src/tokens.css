@@ -242,6 +242,12 @@ svg text { font-family: inherit; }
 .theme-toggle .sun { display: none; }
 :root[data-theme="dark"] .theme-toggle .sun { display: block; }
 :root[data-theme="dark"] .theme-toggle .moon { display: none; }
+.rescan-button:disabled { cursor: progress; }
+.rescan-button[aria-busy="true"] svg { animation: rescan-spin 900ms linear infinite; }
+@keyframes rescan-spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) {
+  .rescan-button[aria-busy="true"] svg { animation: none; opacity: 0.5; }
+}
 
 /* ---------- Buttons ---------- */
 .btn {

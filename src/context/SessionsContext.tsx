@@ -20,9 +20,12 @@ import { useSettingsContext } from "./SettingsContext";
 interface SessionsState {
   sessions: Session[];
   loading: boolean;
-  scanState: "idle" | "scanning" | "done" | "error";
+  scanState: "idle" | "done" | "error";
   scanError: string | null;
+  /** A rescan of the log folders is running; the current sessions stay shown. */
+  rescanning: boolean;
   refresh: () => Promise<void>;
+  /** Re-read every log folder and re-arm the file watcher. */
   triggerRescan: () => Promise<void>;
   /** Which folders are read; null until the first answer from the backend. */
   access: DataAccess | null;
@@ -49,10 +52,9 @@ const SessionsContext = createContext<SessionsState | null>(null);
 export function SessionsProvider({ children }: { children: ReactNode }) {
   const [sessions, setSessions] = useState<Session[]>([]);
   const [loading, setLoading] = useState(true);
-  const [scanState, setScanState] = useState<
-    "idle" | "scanning" | "done" | "error"
-  >("idle");
+  const [scanState, setScanState] = useState<"idle" | "done" | "error">("idle");
   const [scanError, setScanError] = useState<string | null>(null);
+  const [rescanning, setRescanning] = useState(false);
   const [access, setAccess] = useState<DataAccess | null>(null);
 
   // Custom prices change what `rateFor` returns; costs are derived in memos
@@ -87,18 +89,20 @@ export function SessionsProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const triggerRescan = useCallback(async () => {
-    setScanState("scanning");
+    setRescanning(true);
     setScanError(null);
     try {
       await invoke("rescan");
-      // The backend will emit "usage-updated" when done; refresh handles it.
-      // But also do a direct refresh in case the event fires before we listen.
+      // The backend also emits "usage-updated"; refreshing directly skips the
+      // debounce so the button's spinner stops on the new data.
       await refresh();
     } catch (err) {
       const message =
         err instanceof Error ? err.message : String(err ?? "Unknown error");
       setScanState("error");
       setScanError(message);
+    } finally {
+      setRescanning(false);
     }
   }, [refresh]);
 
@@ -168,6 +172,7 @@ export function SessionsProvider({ children }: { children: ReactNode }) {
         loading,
         scanState,
         scanError,
+        rescanning,
         refresh,
         triggerRescan,
         access,
