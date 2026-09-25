@@ -286,6 +286,9 @@
       "hide": "閉じる",
       "copy": "コピー",
       "copied": "コピーしました",
+      "copyPrompt": "Claude Code / Codex 用のプロンプトをコピー",
+      "promptCopied": "コピーしました — Claude Code か Codex に貼り付けてください",
+      "copyPromptHint": "コーディングエージェントに渡せる依頼文をコピーします。各項目の設定場所を探して説明し、あなたが承認した変更だけを適用します。",
       "saves": "1 リクエストあたり約 {{tokens}} トークン削減 — この期間の {{requests}} リクエストで約 {{total}}",
       "more": "ほか {{count}} 件",
       "severity": {

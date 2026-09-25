@@ -1,10 +1,19 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { fixSnippet, type Recommendation, type ToolAnalysis } from "../../lib/tool-usage";
+import { fixPrompt, fixSnippet, type Recommendation, type ToolAnalysis } from "../../lib/tool-usage";
 import { fmtTokens } from "../../lib/format";
 import { Badge } from "../../primitives/Badge";
 
 const SHOWN_ITEMS = 8;
+
+/** What the pasted prompt asks the agent to answer in, per UI language. */
+const REPLY_LANGUAGE: Record<string, string> = {
+  en: "English",
+  "zh-TW": "Traditional Chinese (繁體中文)",
+  ja: "Japanese (日本語)",
+};
+
+type Copied = "snippet" | "prompt" | null;
 
 export function RecommendationsCard({ analysis: a }: { analysis: ToolAnalysis }) {
   const { t } = useTranslation();
@@ -33,7 +42,7 @@ function RecommendationItem({ rec, analysis: a }: { rec: Recommendation; analysi
   const codexBody = `tools.recs.${rec.kind}.bodyCodex`;
   const bodyKey = a.tool === "codex_cli" && i18n.exists(codexBody) ? codexBody : `tools.recs.${rec.kind}.body`;
   const [open, setOpen] = useState(false);
-  const [copied, setCopied] = useState(false);
+  const [copied, setCopied] = useState<Copied>(null);
   const snippet = fixSnippet(a.tool, rec);
 
   // Numbers read as tokens in the message are formatted like tokens.
@@ -46,12 +55,22 @@ function RecommendationItem({ rec, analysis: a }: { rec: Recommendation; analysi
     memoryFile: a.tool === "codex_cli" ? "AGENTS.md" : "CLAUDE.md",
   };
 
-  const copy = async () => {
-    if (!snippet) return;
+  const copy = async (what: Exclude<Copied, null>) => {
+    let text = snippet;
+    if (what === "prompt") {
+      // The agent reads the finding in English whatever the UI language is.
+      const en = i18n.getFixedT("en");
+      text = fixPrompt(a, rec, {
+        title: en(`tools.recs.${rec.kind}.title`, values),
+        body: en(bodyKey, values),
+        replyLanguage: REPLY_LANGUAGE[i18n.language] ?? "English",
+      });
+    }
+    if (!text) return;
     try {
-      await navigator.clipboard.writeText(snippet);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 1500);
+      await navigator.clipboard.writeText(text);
+      setCopied(what);
+      setTimeout(() => setCopied(null), 1500);
     } catch {
       // Clipboard unavailable; the snippet is still selectable.
     }
@@ -87,20 +106,28 @@ function RecommendationItem({ rec, analysis: a }: { rec: Recommendation; analysi
           })}
         </div>
       )}
-      {snippet && (
-        <>
+      <div className="rec-actions">
+        <button
+          type="button"
+          className="rec-toggle"
+          title={t("tools.recs.copyPromptHint")}
+          onClick={() => void copy("prompt")}
+        >
+          {copied === "prompt" ? t("tools.recs.promptCopied") : t("tools.recs.copyPrompt")}
+        </button>
+        {snippet && (
           <button type="button" className="rec-toggle" aria-expanded={open} onClick={() => setOpen((o) => !o)}>
             {open ? t("tools.recs.hide") : t("tools.recs.howTo")}
           </button>
-          {open && (
-            <div className="rec-snippet">
-              <pre>{snippet}</pre>
-              <button type="button" className="btn" onClick={() => void copy()}>
-                {copied ? t("tools.recs.copied") : t("tools.recs.copy")}
-              </button>
-            </div>
-          )}
-        </>
+        )}
+      </div>
+      {snippet && open && (
+        <div className="rec-snippet">
+          <pre>{snippet}</pre>
+          <button type="button" className="btn" onClick={() => void copy("snippet")}>
+            {copied === "snippet" ? t("tools.recs.copied") : t("tools.recs.copy")}
+          </button>
+        </div>
       )}
     </li>
   );

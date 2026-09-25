@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import * as fc from "fast-check";
 import {
   analyzeToolUsage,
+  fixPrompt,
   fixSnippet,
   GRACE_DAYS,
   usageTier,
@@ -199,10 +200,14 @@ describe("fixSnippet", () => {
     expect(rare.skillOverrides.tdd).toBe("name-only");
   });
 
-  it("removes MCP servers but sends claude.ai connectors to their settings", () => {
-    const snippet = fixSnippet("claude_code", rec("unused_mcp", ["sentry", "claude_ai_Gmail"]))!;
+  it("removes MCP servers but sends connectors and desktop-app features to their settings", () => {
+    const uuid = "1a59c906-04da-521d-bda7-7f71b9f9e01c";
+    const snippet = fixSnippet("claude_code", rec("unused_mcp", ["sentry", "claude_ai_Gmail", uuid, "Control_Chrome"]))!;
     expect(snippet).toContain("claude mcp remove sentry");
-    expect(snippet).not.toContain("claude mcp remove claude_ai_Gmail");
+    for (const n of ["claude_ai_Gmail", uuid, "Control_Chrome"]) {
+      expect(snippet).not.toContain(`claude mcp remove ${n}`);
+      expect(snippet).toContain(`#   ${n}`);
+    }
   });
 
   it("disables Codex servers and skills in config.toml, quoting odd names", () => {
@@ -214,5 +219,55 @@ describe("fixSnippet", () => {
     );
     // Without a path there is nothing to write.
     expect(fixSnippet("codex_cli", rec("unused_skills", ["imagegen"]))).toBeNull();
+  });
+});
+
+describe("desktop app servers", () => {
+  it("never recommends removing the desktop app's own ccd_ servers", () => {
+    const report: ToolUsageReport = {
+      sessions: [
+        { tool: "claude_code", session_id: "s1", started_at: new Date(NOW.getTime() - 30 * DAY).toISOString(), requests: 10, baseline_tokens: 20_000, calls: [] },
+      ],
+      listed: ["ccd_session_mgmt", "sentry"].map((name) => ({
+        tool: "claude_code" as const,
+        kind: "mcp" as const,
+        name,
+        tokens: 100,
+        tools: 3,
+        path: null,
+        current: true,
+        first_listed: new Date(NOW.getTime() - 60 * DAY).toISOString(),
+        last_listed: NOW.toISOString(),
+        sessions_listed: 5,
+      })),
+    };
+    const a = analyzeToolUsage(report, "claude_code", { now: NOW, days: null, contextWindow: WINDOW });
+    const unused = a.recommendations.find((r) => r.kind === "unused_mcp");
+    expect(unused?.items.map((r) => r.name)).toEqual(["sentry"]);
+  });
+});
+
+describe("fixPrompt", () => {
+  const item = (name: string) => ({
+    kind: "mcp" as const, name, calls: 0, errors: 0, sessionsUsed: 0, sessionShare: 0, lastUsed: null,
+    installed: true, everListed: true, removable: true, listingTokens: 1200, mcpTools: 4, toolCalls: [],
+    path: null, firstListed: null, tier: "unused" as const,
+  });
+  const rec: Recommendation = { kind: "unused_mcp", severity: "warning", items: [item("sentry")], tokensPerRequest: 1200, values: {} };
+  const analysis = { tool: "claude_code" as const, sessions: 12, requests: 3400 } as Parameters<typeof fixPrompt>[0];
+
+  it("carries the finding, every item, the suggested fix and asks before changing anything", () => {
+    const p = fixPrompt(analysis, rec, { title: "1 MCP server never used", body: "Disable it.", replyLanguage: "Japanese" });
+    expect(p).toContain("1 MCP server never used");
+    expect(p).toContain("- sentry (MCP server, ≈ 1,200 tokens per request, never called in this period)");
+    expect(p).toContain("claude mcp remove sentry");
+    expect(p).toContain("Wait for my OK");
+    expect(p).toContain("Reply in Japanese.");
+  });
+
+  it("points Codex at config.toml", () => {
+    const p = fixPrompt({ ...analysis, tool: "codex_cli" }, rec, { title: "t", body: "b", replyLanguage: "English" });
+    expect(p).toContain("~/.codex/config.toml");
+    expect(p).not.toContain("claude mcp list");
   });
 });
