@@ -6,8 +6,8 @@ import {
   clampPercent,
   durationPhrase,
   issueKey,
+  planTools,
   resetsInMs,
-  subscribedTools,
   windowPhrase,
 } from "./plan";
 import type { AuthKind, PlanIssue, PlanStatus, QuotaWindow } from "../types";
@@ -119,9 +119,9 @@ describe("clampPercent", () => {
   });
 });
 
-describe("subscribedTools", () => {
-  it("keeps only subscription sign-ins", () => {
-    const status = (auth: AuthKind): PlanStatus => ({
+describe("planTools", () => {
+  it("keeps subscription sign-ins and sign-ins that couldn't be read", () => {
+    const status = (auth: AuthKind, issue: PlanIssue | null = null): PlanStatus => ({
       tool: "claude_code",
       auth,
       plan: null,
@@ -129,15 +129,23 @@ describe("subscribedTools", () => {
       organization: null,
       credential_source: null,
       quota: null,
-      issue: null,
+      issue,
     });
     const report = {
       online: false,
       checked_at: null,
       live_checked_at: null,
-      tools: [status("subscription"), status("api_key"), status("signed_out")],
+      tools: [
+        status("subscription"),
+        status("api_key"),
+        status("signed_out"),
+        status("signed_out", { kind: "credentials_unreadable" }),
+      ],
     };
-    expect(subscribedTools(report).map((t) => t.auth)).toEqual(["subscription"]);
-    expect(subscribedTools(null)).toEqual([]);
+    expect(planTools(report).map((t) => [t.auth, t.issue?.kind ?? null])).toEqual([
+      ["subscription", null],
+      ["signed_out", "credentials_unreadable"],
+    ]);
+    expect(planTools(null)).toEqual([]);
   });
 });

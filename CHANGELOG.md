@@ -14,7 +14,7 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
   weekly, extra usage — is used and when it resets, on the Dashboard and under Settings → Plans &
   limits. Codex limits are read from its own logs, with no network. Turning on "Check plan limits
   online" asks Anthropic or OpenAI for current numbers with the tool's own sign-in (off by default;
-  the sign-in is never renewed or stored by the app).
+  the sign-in is never renewed or stored by the app). The menu-bar popover lists the same limits.
 
 ## [1.0.1] - 2026-09-23
 

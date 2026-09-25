@@ -23,7 +23,7 @@ import { TOKEN_KIND_COLORS } from "../../charts/MiniStackBar";
 import { useSessionsContext } from "../../context/SessionsContext";
 import { useSettingsContext } from "../../context/SettingsContext";
 import { contextHealthSessions } from "../../lib/insights";
-import { subscribedTools } from "../../lib/plan";
+import { planTools } from "../../lib/plan";
 import { usePlanStatus } from "../../hooks/usePlanStatus";
 import { FilterBar, FilterBarSep } from "../../primitives/FilterBar";
 import { FilterChip } from "../../primitives/FilterChip";
@@ -163,7 +163,7 @@ export default function DashboardPage() {
   const { contextAlertThreshold } = useSettingsContext();
   const navigate = useNavigate();
   const plans = usePlanStatus();
-  const planTools = subscribedTools(plans.report);
+  const plannedTools = planTools(plans.report);
 
   // --- filter state ---
   const [measure, setMeasure] = useState<Measure>("tokens");
@@ -601,11 +601,11 @@ export default function DashboardPage() {
           branches={branchCount}
         />
 
-        {/* Plan limits — only for tools signed in with a subscription */}
-        {planTools.length > 0 && (
+        {/* Plan limits — tools signed in with a subscription, or whose sign-in couldn't be read */}
+        {plannedTools.length > 0 && (
           <div className="section-gap">
             <PlanUsageCard
-              tools={planTools}
+              tools={plannedTools}
               online={plans.report?.online ?? false}
               refreshing={plans.refreshing}
               onRefresh={() => void plans.refresh()}

@@ -10,10 +10,12 @@
 #[cfg(target_os = "macos")]
 static REFUSED: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
 
-/// The secret of the generic-password item named `service`: `Ok(None)` when
-/// there is no such item, `Err` when it exists but can't be read.
+/// The secret of the generic-password item `service` / `account`: `Ok(None)`
+/// when there is no such item, `Err` when it exists but can't be read. The
+/// account matters: a tool that was signed in under another one can leave a
+/// stale item with the same service name behind.
 #[cfg(target_os = "macos")]
-pub fn read_generic_password(service: &str) -> Result<Option<String>, String> {
+pub fn read_generic_password(service: &str, account: &str) -> Result<Option<String>, String> {
     use std::sync::atomic::Ordering;
     // errSecItemNotFound, as `security`'s exit status (the OSStatus's low byte).
     const NOT_FOUND: i32 = 44;
@@ -21,7 +23,7 @@ pub fn read_generic_password(service: &str) -> Result<Option<String>, String> {
         return Err("keychain access was refused earlier".into());
     }
     let output = std::process::Command::new("/usr/bin/security")
-        .args(["find-generic-password", "-s", service, "-w"])
+        .args(["find-generic-password", "-a", account, "-s", service, "-w"])
         .output()
         .map_err(|e| e.to_string())?;
     match output.status.code() {
@@ -35,6 +37,6 @@ pub fn read_generic_password(service: &str) -> Result<Option<String>, String> {
 }
 
 #[cfg(not(target_os = "macos"))]
-pub fn read_generic_password(_service: &str) -> Result<Option<String>, String> {
+pub fn read_generic_password(_service: &str, _account: &str) -> Result<Option<String>, String> {
     Ok(None)
 }

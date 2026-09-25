@@ -29,6 +29,8 @@ const GLOBAL_CONFIG_FILE: &str = ".claude.json";
 // CLAUDE_CONFIG_DIR is set. A GUI app can't see the user's shell environment,
 // so only the default item is read; hash `config_dir` here if that matters.
 const KEYCHAIN_SERVICE: &str = "Claude Code-credentials";
+/// Claude Code's keychain account when the user name won't do.
+const FALLBACK_KEYCHAIN_ACCOUNT: &str = "claude-code-user";
 const USAGE_URL: &str = "https://api.anthropic.com/api/oauth/usage";
 const OAUTH_BETA: &str = "oauth-2025-04-20";
 /// The usage endpoint needs it; tokens from `claude setup-token` lack it.
@@ -43,7 +45,8 @@ const WINDOWS: [(&str, u32, Option<&str>); 4] = [
     ("seven_day_sonnet", WEEK_MINUTES, Some("Sonnet")),
 ];
 
-type KeychainReader = fn(&str) -> Result<Option<String>, String>;
+/// (service, account) → the item's secret.
+type KeychainReader = fn(&str, &str) -> Result<Option<String>, String>;
 
 pub struct ClaudeCodePlan {
     /// Claude Code's config directory, `~/.claude` by default.
@@ -76,7 +79,8 @@ impl ClaudeCodePlan {
             Err(e) if e.kind() == ErrorKind::NotFound => {}
             Err(_) => return Credentials::Unreadable,
         }
-        match (self.keychain)(KEYCHAIN_SERVICE) {
+        let account = keychain_account(std::env::var("USER").ok().as_deref());
+        match (self.keychain)(KEYCHAIN_SERVICE, &account) {
             Ok(Some(secret)) => match parse_secret(&secret) {
                 Some(json) => Credentials::Found { json, source: CredentialSource::Keychain },
                 None => Credentials::Unreadable,
@@ -164,6 +168,15 @@ impl PlanProvider for ClaudeCodePlan {
         let body = ok_body(http.get(USAGE_URL, &headers))?;
         Ok(LiveReport { quota: parse_usage(&body, now)?, plan: None })
     }
+}
+
+/// The account Claude Code files its keychain item under: `$USER`, or a fixed
+/// name when that is unset or has characters it won't use.
+fn keychain_account(user: Option<&str>) -> String {
+    let usable = |name: &&str| {
+        !name.is_empty() && name.chars().all(|c| c.is_ascii_alphanumeric() || matches!(c, '.' | '_' | '-'))
+    };
+    user.filter(usable).unwrap_or(FALLBACK_KEYCHAIN_ACCOUNT).to_string()
 }
 
 /// `subscriptionType`, with Max split by its rate-limit tier the way claude.ai
@@ -283,7 +296,7 @@ mod tests {
         "expiresAt":1790000000000,"scopes":["user:inference","user:profile"],
         "subscriptionType":"max","rateLimitTier":"default_claude_max_20x"}}"#;
 
-    fn no_keychain(_: &str) -> Result<Option<String>, String> {
+    fn no_keychain(_: &str, _: &str) -> Result<Option<String>, String> {
         Ok(None)
     }
 
@@ -326,11 +339,12 @@ mod tests {
 
     #[test]
     fn falls_back_to_the_keychain_as_json_or_hex() {
-        fn json(service: &str) -> Result<Option<String>, String> {
+        fn json(service: &str, account: &str) -> Result<Option<String>, String> {
             assert_eq!(service, "Claude Code-credentials");
+            assert!(!account.is_empty());
             Ok(Some(CREDENTIALS.to_string()))
         }
-        fn hex(_: &str) -> Result<Option<String>, String> {
+        fn hex(_: &str, _: &str) -> Result<Option<String>, String> {
             Ok(Some(CREDENTIALS.bytes().map(|b| format!("{b:02x}")).collect()))
         }
         let (_home, dir) = home_with(None, None);
@@ -343,13 +357,22 @@ mod tests {
 
     #[test]
     fn a_keychain_refusal_is_reported() {
-        fn denied(_: &str) -> Result<Option<String>, String> {
+        fn denied(_: &str, _: &str) -> Result<Option<String>, String> {
             Err("User interaction is not allowed.".into())
         }
         let (_home, dir) = home_with(None, None);
         let status = ClaudeCodePlan::with_keychain(&dir, denied).detect(now()).unwrap().status;
         assert_eq!(status.auth, AuthKind::SignedOut);
         assert_eq!(status.issue, Some(PlanIssue::CredentialsUnreadable));
+    }
+
+    #[test]
+    fn keychain_account_follows_claude_code() {
+        assert_eq!(keychain_account(Some("kaija")), "kaija");
+        assert_eq!(keychain_account(Some("first.last-2")), "first.last-2");
+        assert_eq!(keychain_account(Some("名前")), FALLBACK_KEYCHAIN_ACCOUNT);
+        assert_eq!(keychain_account(Some("")), FALLBACK_KEYCHAIN_ACCOUNT);
+        assert_eq!(keychain_account(None), FALLBACK_KEYCHAIN_ACCOUNT);
     }
 
     #[test]
