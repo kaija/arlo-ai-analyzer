@@ -6,6 +6,8 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
+## [1.0.2] - 2026-09-25
+
 ### Added
 
 - **Plans and limits.** The app now recognises which subscription each tool is signed in with
@@ -15,6 +17,18 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
   limits. Codex limits are read from its own logs, with no network. Turning on "Check plan limits
   online" asks Anthropic or OpenAI for current numbers with the tool's own sign-in (off by default;
   the sign-in is never renewed or stored by the app). The menu-bar popover lists the same limits.
+  When a sign-in can't be read, the card says why instead of leaving the tool out.
+- **Rescan button** in the top bar, on every page, to re-read the logs on demand.
+
+### Changed
+
+- Built-in OpenRouter price snapshot refreshed (450 → 455 models).
+
+### Fixed
+
+- One unreadable project folder or transcript no longer hides every new session from that tool:
+  bad files are skipped, and a transcript caught mid-write is still read.
+- New log folders that did not exist at startup are now watched after a rescan.
 
 ## [1.0.1] - 2026-09-23
 
@@ -57,5 +71,6 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 First App Store release: token and cost reports for Claude Code and Codex CLI, read from local logs,
 with a dashboard, session details, charts, and English / 繁體中文 / 日本語 UI.
 
+[1.0.2]: https://github.com/kaija/arlo-ai-analyzer/compare/v1.0.1...v1.0.2
 [1.0.1]: https://github.com/kaija/arlo-ai-analyzer/compare/0a3daf5...v1.0.1
 [1.0.0]: https://github.com/kaija/arlo-ai-analyzer/commit/0a3daf5
