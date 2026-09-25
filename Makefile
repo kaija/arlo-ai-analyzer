@@ -1,4 +1,4 @@
-.PHONY: dev build release install clean lint test help site update-openrouter-pricing
+.PHONY: dev build release appstore install clean lint test help site update-openrouter-pricing
 
 # Default target
 .DEFAULT_GOAL := help
@@ -48,6 +48,11 @@ lint-rust:
 ## lint-frontend: Type-check the TypeScript frontend (including test files)
 lint-frontend:
 	pnpm tsc --noEmit -p tsconfig.json && pnpm tsc --noEmit -p tsconfig.test.json
+
+## appstore: Build the signed Mac App Store .pkg into dist-appstore/ (make appstore BUILD=<n>; CI does this on pushes to release)
+appstore:
+	@test -n "$(BUILD)" || (echo "usage: make appstore BUILD=<build number>" && exit 1)
+	scripts/build-appstore.sh $(BUILD)
 
 ## update-openrouter-pricing: Re-fetch OpenRouter model list and regenerate src/lib/openrouter-pricing.ts (run before each release)
 update-openrouter-pricing:

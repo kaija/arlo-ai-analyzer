@@ -35,3 +35,6 @@ src-tauri/embedded.provisionprofile
 
 # GitHub Pages build output (make site)
 _site/
+
+# Mac App Store packages (scripts/build-appstore.sh)
+dist-appstore/
