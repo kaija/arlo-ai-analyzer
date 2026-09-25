@@ -6,6 +6,17 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
+### Added
+
+- **Tools page.** Shows, across sessions, which built-in tools, skills, MCP servers and subagents
+  Claude Code and Codex actually call, how often, and how often they fail, next to what each one
+  costs on every request just by being loaded. It measures each session's starting context (the
+  prompt before any work) and splits it into skills, MCP and subagent listings and the rest. It
+  recommends what to turn off, based on published guidance (Anthropic: tool selection degrades past
+  30–50 tools; OpenAI: fewer than 20 functions; Codex: skill list capped at 2% of the window), with
+  the `skillOverrides`, `claude mcp remove` or `config.toml` change ready to copy. Something
+  installed in the last 7 days is never called unused.
+
 ## [1.0.2] - 2026-09-25
 
 ### Added

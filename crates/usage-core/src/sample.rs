@@ -30,6 +30,48 @@ const CODEX_SESSIONS: u32 = 14;
 /// How far back the sample history reaches.
 const HISTORY_DAYS: i64 = 30;
 
+/// Skills the sample has installed. Some are never called, so the Tools page
+/// has something to recommend switching off.
+const CLAUDE_SKILLS: [(&str, &str); 8] = [
+    ("code-review", "Review the current diff against the repo's coding standards and the originating issue."),
+    ("tdd", "Test-driven development: write a failing test, make it pass, then refactor."),
+    ("frontend-design", "Build polished, accessible UI components and pages with the project's design tokens."),
+    ("release-notes", "Draft release notes from the pull requests merged since the last tag."),
+    ("pdf", "Read, fill, merge and create PDF files, including forms and scanned pages."),
+    ("xlsx", "Create, edit and analyse spreadsheets with formulas, formatting and charts."),
+    ("brand-guidelines", "Apply the company's brand colours, typography and tone of voice to any artifact."),
+    ("db-migrate", "Plan and write reversible database migrations and backfills."),
+];
+
+/// MCP servers and their tools; `sentry` is connected but never used.
+const CLAUDE_MCP: [(&str, &[&str]); 3] = [
+    ("github", &["create_pull_request", "list_issues", "get_file_contents", "search_code", "add_comment"]),
+    ("linear", &["list_issues", "create_issue", "update_issue"]),
+    ("sentry", &["get_issue", "search_events", "list_projects", "get_trace"]),
+];
+
+/// `(tool name, skill or subagent input, weight)` for a sample tool call.
+const CLAUDE_CALLS: [(&str, &str, u64); 11] = [
+    ("Bash", "", 30),
+    ("Read", "", 25),
+    ("Edit", "", 18),
+    ("Grep", "", 10),
+    ("Write", "", 5),
+    ("mcp__github__get_file_contents", "", 3),
+    ("mcp__github__create_pull_request", "", 1),
+    ("mcp__linear__list_issues", "", 2),
+    ("Skill", "code-review", 2),
+    ("Skill", "tdd", 2),
+    ("Agent", "Explore", 2),
+];
+
+const CODEX_SKILLS: [(&str, &str); 4] = [
+    ("imagegen", "Generate or edit raster images."),
+    ("openai-docs", "Look up current OpenAI API documentation."),
+    ("spreadsheets", "Create and analyse spreadsheet files."),
+    ("db-migrate", "Plan and write reversible database migrations."),
+];
+
 /// Replace `dir` with a fresh sample tree and return the roots to scan it.
 pub fn write_sample(dir: &Path, now: DateTime<Utc>) -> Result<Roots> {
     if dir.exists() {
@@ -62,6 +104,18 @@ impl Rng {
         x ^= x << 17;
         self.0 = x;
         x
+    }
+
+    /// Index into `weights`, chosen in proportion to them.
+    fn weighted(&mut self, weights: impl Iterator<Item = u64> + Clone) -> usize {
+        let mut pick = self.range(1, weights.clone().sum());
+        for (i, w) in weights.enumerate() {
+            if pick <= w {
+                return i;
+            }
+            pick -= w;
+        }
+        0
     }
 
     /// Uniform in `lo..=hi`.
@@ -133,6 +187,7 @@ fn write_claude_session(root: &Path, rng: &mut Rng, now: DateTime<Utc>, i: u32) 
         "sessionId": session_id,
         "message": { "role": "user", "content": "Sample prompt" },
     })];
+    lines.extend(claude_listings(t, cwd, &session_id));
 
     let mut context: u64 = rng.range(9_000, 18_000);
     for turn in 0..turns {
@@ -158,6 +213,21 @@ fn write_claude_session(root: &Path, rng: &mut Rng, now: DateTime<Utc>, i: u32) 
         let (write_5m, write_1h) = if one_hour { (0, added) } else { (added, 0) };
         let last = turn + 1 == turns;
         let stop_reason = if last || rng.chance(15) { "end_turn" } else { "tool_use" };
+        let mut content = Vec::new();
+        let mut failed = None;
+        if stop_reason == "tool_use" {
+            let (name, arg, _) = CLAUDE_CALLS[rng.weighted(CLAUDE_CALLS.iter().map(|c| c.2))];
+            let id = format!("toolu_sample_{i}_{turn}");
+            let input = match name {
+                "Skill" => json!({ "skill": arg }),
+                "Agent" => json!({ "subagent_type": arg, "prompt": "Find where this is handled" }),
+                _ => json!({}),
+            };
+            content.push(json!({ "type": "tool_use", "id": id, "name": name, "input": input }));
+            if name == "Bash" && rng.chance(8) {
+                failed = Some(id);
+            }
+        }
         let usage = json!({
             "input_tokens": rng.range(1, 40),
             "output_tokens": rng.range(120, 3_200),
@@ -180,13 +250,67 @@ fn write_claude_session(root: &Path, rng: &mut Rng, now: DateTime<Utc>, i: u32) 
                 "model": model,
                 "role": "assistant",
                 "stop_reason": stop_reason,
+                "content": content,
                 "usage": usage,
             },
         }));
+        if let Some(id) = failed {
+            lines.push(json!({
+                "type": "user",
+                "timestamp": ts(t),
+                "cwd": cwd,
+                "sessionId": session_id,
+                "message": {
+                    "role": "user",
+                    "content": [{ "type": "tool_result", "tool_use_id": id, "is_error": true, "content": "exit code 1" }],
+                },
+            }));
+        }
         context += added;
     }
 
     write_lines(&project_dir.join(format!("{session_id}.jsonl")), &lines)
+}
+
+/// The attachments Claude Code writes at the start of a session: what skills,
+/// MCP tools and subagents were loaded.
+fn claude_listings(t: DateTime<Utc>, cwd: &str, session_id: &str) -> Vec<serde_json::Value> {
+    let attachment = |body: serde_json::Value| {
+        json!({ "type": "attachment", "timestamp": ts(t), "cwd": cwd, "sessionId": session_id, "attachment": body })
+    };
+    let skills: String = CLAUDE_SKILLS.iter().map(|(n, d)| format!("- {n}: {d}\n")).collect();
+    let tools: Vec<String> = CLAUDE_MCP
+        .iter()
+        .flat_map(|(server, tools)| tools.iter().map(move |tool| format!("mcp__{server}__{tool}")))
+        .collect();
+    vec![
+        attachment(json!({
+            "type": "skill_listing",
+            "isInitial": true,
+            "skillCount": CLAUDE_SKILLS.len(),
+            "names": CLAUDE_SKILLS.iter().map(|s| s.0).collect::<Vec<_>>(),
+            "content": skills,
+        })),
+        attachment(json!({ "type": "deferred_tools_delta", "addedNames": tools, "removedNames": [] })),
+        attachment(json!({
+            "type": "mcp_instructions_delta",
+            "addedNames": ["github", "sentry"],
+            "addedBlocks": [
+                "## github\nUse these tools to read repositories, open pull requests and triage issues.",
+                "## sentry\nQuery errors, traces and releases. Prefer search_events for time-bounded questions.",
+            ],
+            "removedNames": [],
+        })),
+        attachment(json!({
+            "type": "agent_listing_delta",
+            "addedTypes": ["general-purpose", "Explore"],
+            "addedLines": [
+                "- general-purpose: General-purpose agent for multi-step tasks. (Tools: *)",
+                "- Explore: Read-only search agent for broad fan-out searches. (Tools: Read, Grep, Glob)",
+            ],
+            "removedTypes": [],
+        })),
+    ]
 }
 
 fn write_codex_session(root: &Path, rng: &mut Rng, now: DateTime<Utc>, i: u32) -> Result<()> {
@@ -208,6 +332,15 @@ fn write_codex_session(root: &Path, rng: &mut Rng, now: DateTime<Utc>, i: u32) -
             "type": "turn_context",
             "timestamp": ts(t),
             "payload": { "model": CODEX_MODEL, "effort": "medium", "cwd": cwd },
+        }),
+        json!({
+            "type": "response_item",
+            "timestamp": ts(t),
+            "payload": {
+                "type": "message",
+                "role": "developer",
+                "content": [{ "type": "input_text", "text": codex_skills_block() }],
+            },
         }),
     ];
 
@@ -238,6 +371,20 @@ fn write_codex_session(root: &Path, rng: &mut Rng, now: DateTime<Utc>, i: u32) -
             },
         }));
         context = prompt;
+        let item = match rng.range(1, 20) {
+            1..=11 => json!({ "type": "CommandExecution", "command": ["/bin/bash", "-lc", "cargo test"], "status": if rng.chance(10) { "failed" } else { "completed" } }),
+            12..=16 => json!({ "type": "FileChange", "status": "completed" }),
+            17..=18 => json!({ "type": "McpToolCall", "server": "github", "tool": "search_code", "status": "completed" }),
+            19 => json!({ "type": "WebSearch", "query": "sample" }),
+            _ => json!({ "type": "CommandExecution", "command": ["/bin/bash", "-lc", format!("cat {}", codex_skill_path("openai-docs"))], "status": "completed" }),
+        };
+        let mut item = item;
+        item["id"] = json!(format!("exec-sample-{i}-{req}"));
+        lines.push(json!({
+            "type": "event_msg",
+            "timestamp": ts(t),
+            "payload": { "type": "item_completed", "item": item },
+        }));
         if req + 1 == requests || rng.chance(20) {
             lines.push(json!({
                 "type": "event_msg",
@@ -248,6 +395,18 @@ fn write_codex_session(root: &Path, rng: &mut Rng, now: DateTime<Utc>, i: u32) -
     }
 
     write_lines(&file, &lines)
+}
+
+fn codex_skill_path(name: &str) -> String {
+    format!("/Users/demo/.codex/skills/{name}/SKILL.md")
+}
+
+fn codex_skills_block() -> String {
+    let skills: String = CODEX_SKILLS
+        .iter()
+        .map(|(n, d)| format!("- {n}: {d} (file: {})\n", codex_skill_path(n)))
+        .collect();
+    format!("<skills_instructions>\n## Skills\n### Available skills\n{skills}</skills_instructions>")
 }
 
 #[cfg(test)]
@@ -276,6 +435,27 @@ mod tests {
         assert!(sessions.iter().any(|s| s.started_at >= now() - Duration::hours(24)));
         assert!(sessions.iter().any(|s| s.compaction_count > 0));
         assert!(sessions.iter().filter(|s| s.tool == ToolKind::ClaudeCode).all(|s| s.cost_usd > 0.0));
+    }
+
+    /// The Tools page needs both halves: things that are used and things that
+    /// are loaded but never are.
+    #[test]
+    fn sample_has_used_and_unused_tools() {
+        use crate::tool_usage::CapabilityKind;
+        let dir = tempfile::tempdir().unwrap();
+        let roots = write_sample(&dir.path().join("sample"), now()).unwrap();
+        let sessions = crate::scan_all(&roots).unwrap();
+        let called = |kind: CapabilityKind, name: &str| {
+            sessions.iter().any(|s| s.tools.calls.iter().any(|c| c.kind == kind && c.name == name))
+        };
+        assert!(called(CapabilityKind::Builtin, "Bash"));
+        assert!(called(CapabilityKind::Skill, "code-review"));
+        assert!(called(CapabilityKind::Mcp, "github"));
+        assert!(called(CapabilityKind::Builtin, "shell"));
+        assert!(!called(CapabilityKind::Mcp, "sentry"));
+        assert!(!called(CapabilityKind::Skill, "pdf"));
+        assert!(sessions.iter().all(|s| s.tools.listed.is_some()));
+        assert!(sessions.iter().all(|s| s.tools.baseline_tokens.is_some()));
     }
 
     #[test]

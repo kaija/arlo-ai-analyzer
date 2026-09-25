@@ -1,6 +1,7 @@
 use crate::model::{Compaction, Session, SessionDetail, SessionRequest, StopReason, ToolKind};
 use crate::pricing::estimate_request_cost;
 use crate::source::UsageSource;
+use crate::tool_usage::{CapabilityKind, Collector, SessionTools};
 use anyhow::Result;
 use chrono::{DateTime, Utc};
 use serde_json::Value;
@@ -48,6 +49,9 @@ impl UsageSource for ClaudeCodeSource {
         // count them. First file to claim a request keeps it, and files are
         // walked in sorted order so that is stable between runs.
         let mut seen: TurnKeys = TurnKeys::default();
+        // Tool calls replay along with the requests that made them; their
+        // `toolu_…` ids are unique, so they dedupe the same way.
+        let mut seen_calls = CallIds::default();
 
         let mut project_dirs: Vec<PathBuf> = fs::read_dir(&self.root)?
             .flatten()
@@ -76,7 +80,7 @@ impl UsageSource for ClaudeCodeSource {
             files.sort();
 
             for path in files {
-                match parse_session_file(&path, &fallback_project, &mut seen) {
+                match parse_session_file(&path, &fallback_project, &mut seen, &mut seen_calls) {
                     Ok(Some(session)) => sessions.push(session),
                     Ok(None) => {}
                     Err(e) => eprintln!("skipping {}: {e:#}", path.display()),
@@ -94,6 +98,7 @@ impl UsageSource for ClaudeCodeSource {
 /// Identity of one API request: `(message.id, requestId)`.
 type TurnKey = (String, String);
 type TurnKeys = std::collections::HashSet<TurnKey>;
+type CallIds = std::collections::HashSet<String>;
 
 /// One assistant turn, after de-duplication.
 struct Turn {
@@ -139,6 +144,7 @@ struct Transcript {
     started_at: Option<DateTime<Utc>>,
     turns: Vec<Turn>,
     compactions: Vec<Compaction>,
+    tools: SessionTools,
 }
 
 /// Parse one `.jsonl` transcript into de-duplicated assistant turns.
@@ -151,8 +157,8 @@ struct Transcript {
 ///
 /// Keys already present in `seen` are skipped entirely, which is what stops a
 /// resumed session from being billed twice. Pass a fresh set to dedupe within
-/// this file only.
-fn read_transcript(path: &Path, seen: &mut TurnKeys) -> Result<Transcript> {
+/// this file only. `seen_calls` does the same for tool calls.
+fn read_transcript(path: &Path, seen: &mut TurnKeys, seen_calls: &mut CallIds) -> Result<Transcript> {
     let content = crate::sources::read_lossy(path)?;
 
     let mut project = None;
@@ -162,6 +168,10 @@ fn read_transcript(path: &Path, seen: &mut TurnKeys) -> Result<Transcript> {
     let mut slots: Vec<Option<Turn>> = Vec::new();
     let mut at: std::collections::HashMap<TurnKey, usize> = std::collections::HashMap::new();
     let mut compactions: Vec<Compaction> = Vec::new();
+    let mut tools = Collector::default();
+    // The file opens with requests another transcript already claimed: a
+    // resumed session, whose first new request carries the replayed history.
+    let mut replayed = false;
 
     for (line_no, line) in content.lines().enumerate() {
         let line = line.trim();
@@ -193,8 +203,19 @@ fn read_transcript(path: &Path, seen: &mut TurnKeys) -> Result<Transcript> {
             continue;
         }
 
-        if value.get("type").and_then(|v| v.as_str()) != Some("assistant") {
-            continue;
+        match value.get("type").and_then(|v| v.as_str()) {
+            Some("assistant") => {}
+            Some("attachment") => {
+                if let Some(attachment) = value.get("attachment") {
+                    tools.claude_attachment(attachment);
+                }
+                continue;
+            }
+            Some("user") => {
+                read_user_tools(&value, &mut tools);
+                continue;
+            }
+            _ => continue,
         }
         let Some(message) = value.get("message") else {
             continue;
@@ -207,8 +228,10 @@ fn read_transcript(path: &Path, seen: &mut TurnKeys) -> Result<Transcript> {
         // A record with no id at all can't be deduplicated; keep it.
         let keyed = !key.0.is_empty() || !key.1.is_empty();
         if keyed && seen.contains(&key) {
+            replayed |= slots.is_empty();
             continue;
         }
+        record_tool_uses(message, seen_calls, &mut tools);
 
         let turn = parse_turn(&value, message, line_no as u32 + 1);
         match at.get(&key) {
@@ -224,12 +247,92 @@ fn read_transcript(path: &Path, seen: &mut TurnKeys) -> Result<Transcript> {
 
     seen.extend(at.into_keys());
 
+    let turns: Vec<Turn> = slots.into_iter().flatten().collect();
+    let baseline = if replayed { None } else { baseline_tokens(&turns) };
     Ok(Transcript {
         project,
         started_at,
-        turns: slots.into_iter().flatten().collect(),
+        turns,
         compactions,
+        tools: tools.finish(baseline),
     })
+}
+
+/// Prompt size of the first request made with the session's main model —
+/// the fixed cost before any work. The session's very first request is often
+/// a small Haiku title call, which would understate it.
+fn baseline_tokens(turns: &[Turn]) -> Option<u64> {
+    let mut counts: std::collections::HashMap<&str, usize> = std::collections::HashMap::new();
+    for t in turns {
+        *counts.entry(t.model.as_str()).or_default() += 1;
+    }
+    let main = counts.into_iter().max_by_key(|&(model, n)| (n, model))?.0;
+    turns.iter().find(|t| t.model == main).map(Turn::context_tokens)
+}
+
+/// `tool_use` blocks of an assistant message. Streaming writes a message
+/// several times, so each call is counted once by its id.
+fn record_tool_uses(message: &Value, seen_calls: &mut CallIds, tools: &mut Collector) {
+    let Some(blocks) = message.get("content").and_then(|c| c.as_array()) else {
+        return;
+    };
+    for block in blocks {
+        if block.get("type").and_then(|v| v.as_str()) != Some("tool_use") {
+            continue;
+        }
+        let id = block.get("id").and_then(|v| v.as_str());
+        if let Some(id) = id {
+            if !seen_calls.insert(id.to_string()) {
+                continue;
+            }
+        }
+        let input = |key: &str| block.get("input").and_then(|i| i.get(key)).and_then(|v| v.as_str());
+        match block.get("name").and_then(|v| v.as_str()).unwrap_or_default() {
+            "" => {}
+            // The Skill and Agent tools are plumbing; what matters is which
+            // skill or subagent they ran.
+            "Skill" if input("skill").is_some() => {
+                let skill = input("skill").unwrap_or_default().trim_start_matches('/');
+                tools.call(CapabilityKind::Skill, skill, None, id);
+            }
+            "Agent" | "Task" => {
+                let agent = input("subagent_type").unwrap_or("general-purpose");
+                tools.call(CapabilityKind::Subagent, agent, None, id);
+            }
+            name => tools.call_named(name, id, false),
+        }
+    }
+}
+
+/// Error results for earlier calls, and skills run as slash commands.
+fn read_user_tools(value: &Value, tools: &mut Collector) {
+    let Some(content) = value.get("message").and_then(|m| m.get("content")) else {
+        return;
+    };
+    fn slash(text: &str, tools: &mut Collector) {
+        for part in text.split("<command-name>/").skip(1) {
+            if let Some(name) = part.split("</command-name>").next() {
+                tools.slash_command(name.trim());
+            }
+        }
+    }
+    match content {
+        Value::String(text) => slash(text, tools),
+        Value::Array(blocks) => {
+            for block in blocks {
+                match block.get("type").and_then(|v| v.as_str()) {
+                    Some("text") => slash(block.get("text").and_then(|v| v.as_str()).unwrap_or_default(), tools),
+                    Some("tool_result") if block.get("is_error").and_then(|v| v.as_bool()) == Some(true) => {
+                        if let Some(id) = block.get("tool_use_id").and_then(|v| v.as_str()) {
+                            tools.error(id);
+                        }
+                    }
+                    _ => {}
+                }
+            }
+        }
+        _ => {}
+    }
 }
 
 /// Build a `Compaction` from a `compact_boundary` record.
@@ -329,7 +432,7 @@ pub fn get_session_detail(root: &Path, session_id: &str) -> Result<SessionDetail
     let Some(path) = find_session_file(root, session_id) else {
         return Ok(empty());
     };
-    let transcript = read_transcript(&path, &mut TurnKeys::default())?;
+    let transcript = read_transcript(&path, &mut TurnKeys::default(), &mut CallIds::default())?;
 
     let requests = transcript
         .turns
@@ -385,8 +488,9 @@ fn parse_session_file(
     path: &Path,
     fallback_project: &str,
     seen: &mut TurnKeys,
+    seen_calls: &mut CallIds,
 ) -> Result<Option<Session>> {
-    let transcript = read_transcript(path, seen)?;
+    let transcript = read_transcript(path, seen, seen_calls)?;
     if transcript.turns.is_empty() {
         return Ok(None);
     }
@@ -411,6 +515,7 @@ fn parse_session_file(
         compaction_count: transcript.compactions.len() as u32,
         message_count: transcript.turns.len() as u32,
         cost_usd: 0.0,
+        tools: transcript.tools,
     };
 
     for t in &transcript.turns {
@@ -435,6 +540,7 @@ fn parse_session_file(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::tool_usage::CapabilityKind;
     use std::io::Write;
 
     #[test]
@@ -579,7 +685,7 @@ mod tests {
             dir.path(),
             "-Users-test-p",
             "aaaaaaaa-1111-1111-1111-111111111111",
-            &[shared.clone()],
+            std::slice::from_ref(&shared),
         );
         write_session(
             dir.path(),
@@ -649,7 +755,7 @@ mod tests {
             ],
         );
 
-        let t = read_transcript(&path, &mut TurnKeys::default()).unwrap();
+        let t = read_transcript(&path, &mut TurnKeys::default(), &mut CallIds::default()).unwrap();
         assert_eq!(t.turns[0].effort.as_deref(), Some("xhigh"));
         assert!(t.turns[1].effort.is_none());
         assert!(matches!(t.turns[0].stop_reason, StopReason::StopSequence));
@@ -698,7 +804,7 @@ mod tests {
             ],
         );
 
-        let t = read_transcript(&path, &mut TurnKeys::default()).unwrap();
+        let t = read_transcript(&path, &mut TurnKeys::default(), &mut CallIds::default()).unwrap();
         assert_eq!(t.turns.len(), 3, "the boundary record is not a request");
         assert_eq!(t.compactions.len(), 1);
         let c = &t.compactions[0];
@@ -729,7 +835,7 @@ mod tests {
                 assistant("m1", "r1", 10),
             ],
         );
-        let t = read_transcript(&path, &mut TurnKeys::default()).unwrap();
+        let t = read_transcript(&path, &mut TurnKeys::default(), &mut CallIds::default()).unwrap();
         assert!(t.compactions.is_empty());
         assert_eq!(t.turns.len(), 1);
     }
@@ -751,7 +857,7 @@ mod tests {
             ],
         );
 
-        let t = read_transcript(&path, &mut TurnKeys::default()).unwrap();
+        let t = read_transcript(&path, &mut TurnKeys::default(), &mut CallIds::default()).unwrap();
         assert_eq!(t.turns[0].line, 2);
         assert_eq!(t.turns[1].line, 4);
     }
@@ -767,10 +873,92 @@ mod tests {
             "88888888-8888-8888-8888-888888888888",
             &[assistant("m1", "r1", 5), assistant("m1", "r1", 120)],
         );
-        let t = read_transcript(&path, &mut TurnKeys::default()).unwrap();
+        let t = read_transcript(&path, &mut TurnKeys::default(), &mut CallIds::default()).unwrap();
         assert_eq!(t.turns.len(), 1);
         assert_eq!(t.turns[0].line, 2);
         assert_eq!(t.turns[0].output, 120);
+    }
+
+    /// An assistant turn that calls tools, as Claude Code writes it.
+    fn tool_turn(msg: &str, model: &str, prompt: u64, calls: &[(&str, &str, &str)]) -> String {
+        let blocks: Vec<String> = calls
+            .iter()
+            .map(|(id, name, input)| format!(r#"{{"type":"tool_use","id":"{id}","name":"{name}","input":{input}}}"#))
+            .collect();
+        format!(
+            r#"{{"type":"assistant","requestId":"{msg}","message":{{"id":"{msg}","model":"{model}","stop_reason":"tool_use","content":[{}],"usage":{{"input_tokens":{prompt},"output_tokens":1}}}}}}"#,
+            blocks.join(",")
+        )
+    }
+
+    fn tool_error(id: &str) -> String {
+        format!(r#"{{"type":"user","message":{{"role":"user","content":[{{"type":"tool_result","tool_use_id":"{id}","is_error":true,"content":"boom"}}]}}}}"#)
+    }
+
+    #[test]
+    fn tool_calls_skills_and_subagents_are_counted_once_each() {
+        let dir = tempfile::tempdir().unwrap();
+        let bash = ("t1", "Bash", r#"{"command":"ls"}"#);
+        write_session(
+            dir.path(),
+            "-Users-test-p",
+            "abababab-1111-1111-1111-111111111111",
+            &[
+                r#"{"type":"attachment","attachment":{"type":"skill_listing","names":["tdd","init"],"content":"- tdd: Test first.\n- init: Make CLAUDE.md."}}"#.to_string(),
+                r#"{"type":"user","message":{"role":"user","content":"<command-name>/init</command-name> <command-name>/model</command-name>"}}"#.to_string(),
+                tool_turn("m0", "claude-haiku-4-5-20251001", 900, &[]),
+                // Streamed twice: the same call must count once.
+                tool_turn("m1", "claude-opus-5", 42_000, &[bash]),
+                tool_turn("m1", "claude-opus-5", 42_000, &[bash]),
+                tool_error("t1"),
+                tool_turn(
+                    "m2",
+                    "claude-opus-5",
+                    50_000,
+                    &[
+                        ("t2", "Skill", r#"{"skill":"tdd"}"#),
+                        ("t3", "Agent", r#"{"subagent_type":"Explore","prompt":"x"}"#),
+                        ("t4", "mcp__github__create_pr", "{}"),
+                    ],
+                ),
+            ],
+        );
+
+        let s = &ClaudeCodeSource::with_root(dir.path().to_path_buf()).scan().unwrap()[0];
+        let get = |kind: CapabilityKind, name: &str| s.tools.calls.iter().find(|c| c.kind == kind && c.name == name).cloned();
+        let bash = get(CapabilityKind::Builtin, "Bash").unwrap();
+        assert_eq!((bash.calls, bash.errors), (1, 1));
+        assert_eq!(get(CapabilityKind::Skill, "tdd").unwrap().calls, 1);
+        assert_eq!(get(CapabilityKind::Skill, "init").unwrap().calls, 1, "slash command of a listed skill");
+        assert!(get(CapabilityKind::Skill, "model").is_none(), "/model is not a skill");
+        assert_eq!(get(CapabilityKind::Subagent, "Explore").unwrap().calls, 1);
+        assert_eq!(get(CapabilityKind::Mcp, "github").unwrap().tool.as_deref(), Some("create_pr"));
+        assert!(get(CapabilityKind::Builtin, "Skill").is_none(), "the Skill tool itself is plumbing");
+        // First request on the main model, not the Haiku title call.
+        assert_eq!(s.tools.baseline_tokens, Some(42_000));
+        assert_eq!(s.tools.listed.as_ref().unwrap().len(), 2);
+    }
+
+    /// A resumed session replays its parent's calls; they were made once.
+    /// Its first new request carries the replayed history, so it has no
+    /// meaningful baseline either.
+    #[test]
+    fn a_resumed_session_neither_recounts_calls_nor_reports_a_baseline() {
+        let dir = tempfile::tempdir().unwrap();
+        let first = tool_turn("m1", "claude-opus-5", 40_000, &[("t1", "Read", "{}")]);
+        write_session(dir.path(), "-Users-test-p", "aaaaaaaa-0000-0000-0000-000000000001", std::slice::from_ref(&first));
+        write_session(
+            dir.path(),
+            "-Users-test-p",
+            "bbbbbbbb-0000-0000-0000-000000000002",
+            &[first, tool_turn("m2", "claude-opus-5", 90_000, &[("t2", "Edit", "{}")])],
+        );
+
+        let sessions = ClaudeCodeSource::with_root(dir.path().to_path_buf()).scan().unwrap();
+        assert_eq!(sessions[0].tools.baseline_tokens, Some(40_000));
+        assert_eq!(sessions[1].tools.baseline_tokens, None);
+        let names: Vec<&str> = sessions[1].tools.calls.iter().map(|c| c.name.as_str()).collect();
+        assert_eq!(names, ["Edit"]);
     }
 
     /// Claude Code opens many sessions with a Haiku title call. Judging the

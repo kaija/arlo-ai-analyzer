@@ -3,6 +3,7 @@
     "dashboard": "總覽",
     "sessions": "工作階段",
     "insights": "洞察",
+    "tools": "工具",
     "settings": "設定",
     "expandSidebar": "展開側邊欄",
     "collapseSidebar": "收合側邊欄"
@@ -12,6 +13,7 @@
     "sessions": "工作階段",
     "sessionDetail": "階段詳情",
     "insights": "洞察",
+    "tools": "工具與 Skills",
     "settings": "設定"
   },
   "topbar": {
@@ -238,6 +240,132 @@
       "unauthorized": "供應商拒絕了已儲存的登入。請重新登入該工具。",
       "rate_limited": "檢查太頻繁，供應商要求稍候。稍後會再試一次。",
       "failed": "無法從供應商取得目前額度。"
+    }
+  },
+  "tools": {
+    "loading": "正在讀取工具使用情況…",
+    "error": "無法讀取工具使用情況：{{error}}",
+    "filter": {
+      "tool": "程式工具",
+      "range": "期間",
+      "all": "全部"
+    },
+    "empty": {
+      "title": "這段期間沒有工具活動",
+      "body": "這段期間沒有任何 {{tool}} 工作階段記錄到工具呼叫。試試更長的期間，或重新掃描。"
+    },
+    "stats": {
+      "starting": "起始 context",
+      "startingSub": "佔 {{window}} 視窗的 {{pct}}% · p90 {{p90}}",
+      "startingInfo": "每個工作階段第一個請求的 prompt 大小：系統提示詞、工具定義、skill 清單、記憶檔與你的第一則訊息。每個工作階段在開始工作前都要先付出這些 token。",
+      "loaded": "每個請求都會載入",
+      "loadedSub": "{{skills}} 個 skill · {{servers}} 個 MCP server · {{agents}} 個 subagent",
+      "loadedInfo": "目前已安裝的 skill 描述、MCP 工具名稱與說明、subagent 描述的估計大小（約 4 個字元 = 1 token）。",
+      "unused": "此期間未使用",
+      "unusedSub": "每個請求約 {{tokens}} token",
+      "unusedNone": "已安裝的項目都有被使用",
+      "calls": "工具呼叫",
+      "callsSub": "{{sessions}} 個工作階段中共 {{distinct}} 種工具"
+    },
+    "context": {
+      "title": "起始 context 的組成",
+      "median": "{{count}} 個工作階段的中位數",
+      "skills": "Skills",
+      "mcp": "MCP server",
+      "subagents": "Subagent",
+      "rest": "系統提示詞、內建工具與記憶檔",
+      "threshold": "視窗的 {{pct}}%",
+      "trend": "每日中位數",
+      "noListing": "這個版本的 {{tool}} 不會記錄載入了哪些項目，因此只知道總量。",
+      "noBaseline": "這段期間沒有全新開始的工作階段——續接的工作階段與 subagent 會帶著重播的歷史。"
+    },
+    "recs": {
+      "title": "優化建議",
+      "none": "沒有需要精簡的項目——載入的東西都有派上用場。",
+      "howTo": "如何套用",
+      "hide": "收合",
+      "copy": "複製",
+      "copied": "已複製",
+      "saves": "每個請求約省下 {{tokens}} token——此期間 {{requests}} 個請求合計約 {{total}}",
+      "more": "還有 {{count}} 項",
+      "severity": {
+        "warning": "建議處理",
+        "info": "可考慮"
+      },
+      "starting_context": {
+        "title": "工作階段一開始就用掉 {{pct}}%",
+        "body": "工作階段中位數在開始工作前就帶著 {{median}} token——超過 {{window}} 視窗的十分之一。精簡常駐載入的內容：下方未使用的 skill 與 MCP server，以及過長的 {{memoryFile}}。"
+      },
+      "skill_budget": {
+        "title": "Skill 清單超出預算",
+        "body": "{{count}} 個 skill 描述約佔 {{tokens}} token。Codex 將這份清單上限設為視窗的 2%（這裡約 {{budget}}），超過就會縮短描述；Claude Code 則把每個描述截斷在 1,536 個字元。"
+      },
+      "unused_skills": {
+        "title": "{{count}} 個 skill 從未使用",
+        "body": "每個請求都會載入，但此期間從未被呼叫。建議關閉或刪除——之後隨時可以重新安裝。"
+      },
+      "unused_mcp": {
+        "title": "{{count}} 個 MCP server 從未使用",
+        "body": "此期間沒有任何呼叫，但它們的工具每個請求都會提供給模型。建議停用或移除。"
+      },
+      "unused_subagents": {
+        "title": "{{count}} 個 subagent 從未使用",
+        "body": "它們的描述出現在每個請求的 agent 清單中。刪除用不到的。"
+      },
+      "tool_count": {
+        "title": "載入了 {{tools}} 個 MCP 工具",
+        "body": "Anthropic 發現工具超過 30–50 個時選擇準確度會下降，OpenAI 則建議少於 20 個。Claude Code 會以 tool search 延遲載入 MCP 工具，但每個工具仍會佔用名稱與一次搜尋步驟。停用用不到的工具。"
+      },
+      "rare_skills": {
+        "title": "{{count}} 個 skill 很少使用",
+        "body": "使用率低於每 20 個工作階段 1 次。保留以名稱呼叫的能力，但不要讓描述出現在每個請求中。",
+        "bodyCodex": "使用率低於每 20 個工作階段 1 次。Codex 沒有 name-only 模式，每個 skill 的描述都會出現在每個請求中；可以先停用，需要時再啟用。"
+      },
+      "failing_mcp": {
+        "title": "{{count}} 個 MCP server 經常失敗",
+        "body": "每五次呼叫至少有一次回傳錯誤。請檢查設定或登入狀態——失敗的呼叫一樣要花一次往返。"
+      }
+    },
+    "table": {
+      "title": "跨工作階段的工具使用",
+      "kinds": {
+        "all": "全部",
+        "builtin": "內建",
+        "mcp": "MCP",
+        "skill": "Skills",
+        "subagent": "Subagent"
+      },
+      "count": "顯示 {{count}} 項",
+      "name": "名稱",
+      "type": "類型",
+      "status": "狀態",
+      "calls": "呼叫次數",
+      "sessions": "工作階段",
+      "errors": "錯誤",
+      "lastUsed": "最後使用",
+      "perRequest": "每請求成本",
+      "perRequestTitle": "它的描述在每個請求中估計增加的 token",
+      "builtinCost": "屬於系統提示詞的一部分",
+      "mcpTools": "使用了 {{used}}/{{total}} 個工具",
+      "mcpToolsUsed": "使用了 {{count}} 個工具",
+      "removed": "已移除"
+    },
+    "tier": {
+      "core": "核心",
+      "regular": "常用",
+      "rare": "少用",
+      "unused": "未使用",
+      "new": "新安裝"
+    },
+    "guide": {
+      "title": "這些檢查依據的建議",
+      "toolSearch": "Anthropic：工具超過 30–50 個時選擇準確度會下降。工具超過 10 個或定義超過 10K token 時使用 tool search，並讓最常用的 3–5 個工具保持常駐載入。",
+      "advancedToolUse": "Anthropic：五個 MCP server 的 58 個工具在開始工作前就用掉約 55K token；tool search 可減少約 85%。",
+      "claudeSkills": "Claude Code：每個列出的 skill 在每一輪都會佔用 context。描述會截斷在 1,536 個字元；skillOverrides 可將 skill 設為 off 或 name-only。",
+      "codexSkills": "Codex：skill 清單上限為 context 視窗的 2%（視窗未知時為 8,000 個字元）。以 [[skills.config]] … enabled = false 停用 skill。",
+      "openaiFunctions": "OpenAI：每輪開始時可用的函式建議少於 20 個（非硬性限制）。",
+      "codexConfig": "Codex MCP server：enabled = false 可暫停一個 server；enabled_tools / disabled_tools 可精簡它的工具。",
+      "estimate": "清單大小以約 4 個字元 = 1 token 估算（中日韓字元每字 1 token）。起始 context 則是從記錄中實際量測。"
     }
   }
 }

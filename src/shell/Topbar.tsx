@@ -12,6 +12,7 @@ function pathnameToTitle(pathname: string, t: (key: string) => string): string {
   if (pathname.startsWith("/sessions/")) return t("page.sessionDetail");
   if (pathname === "/sessions") return t("page.sessions");
   if (pathname === "/insights") return t("page.insights");
+  if (pathname === "/tools") return t("page.tools");
   if (pathname === "/settings") return t("page.settings");
   return "Arlo";
 }

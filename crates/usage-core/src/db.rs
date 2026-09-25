@@ -1,4 +1,5 @@
 use crate::model::{Session, ToolKind};
+use crate::tool_usage::StoredSession;
 use anyhow::Result;
 use rusqlite::{params, Connection};
 use std::path::Path;
@@ -9,7 +10,7 @@ use std::path::Path;
 /// every rescan recomputes it from source — so a schema change is handled by
 /// dropping the table and letting the next scan refill it. That is cheaper
 /// than per-column `ALTER TABLE` migrations and can't drift.
-const SCHEMA_VERSION: i64 = 5;
+const SCHEMA_VERSION: i64 = 6;
 
 pub struct Db {
     conn: Connection,
@@ -43,6 +44,7 @@ impl Db {
                 compaction_count INTEGER NOT NULL,
                 message_count INTEGER NOT NULL,
                 cost_usd REAL NOT NULL,
+                tools_json TEXT NOT NULL DEFAULT '{}',
                 PRIMARY KEY (tool, session_id)
             );
             CREATE INDEX IF NOT EXISTS sessions_started_at ON sessions (started_at);",
@@ -54,8 +56,8 @@ impl Db {
         for s in sessions {
             self.conn.execute(
                 "INSERT INTO sessions
-                    (tool, session_id, project, started_at, model, input_tokens, output_tokens, cache_creation_tokens, cache_write_5m, cache_write_1h, cache_read_tokens, peak_context_tokens, peak_context_model, compaction_count, message_count, cost_usd)
-                 VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15, ?16)
+                    (tool, session_id, project, started_at, model, input_tokens, output_tokens, cache_creation_tokens, cache_write_5m, cache_write_1h, cache_read_tokens, peak_context_tokens, peak_context_model, compaction_count, message_count, cost_usd, tools_json)
+                 VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15, ?16, ?17)
                  ON CONFLICT(tool, session_id) DO UPDATE SET
                     project = excluded.project,
                     started_at = excluded.started_at,
@@ -70,7 +72,8 @@ impl Db {
                     peak_context_model = excluded.peak_context_model,
                     compaction_count = excluded.compaction_count,
                     message_count = excluded.message_count,
-                    cost_usd = excluded.cost_usd",
+                    cost_usd = excluded.cost_usd,
+                    tools_json = excluded.tools_json",
                 params![
                     s.tool.as_str(),
                     s.session_id,
@@ -88,6 +91,7 @@ impl Db {
                     s.compaction_count,
                     s.message_count,
                     s.cost_usd,
+                    serde_json::to_string(&s.tools)?,
                 ],
             )?;
         }
@@ -131,10 +135,34 @@ impl Db {
                 compaction_count: row.get(13)?,
                 message_count: row.get(14)?,
                 cost_usd: row.get(15)?,
+                // Only the Tools page needs it, through `tool_sessions`.
+                tools: Default::default(),
             })
         })?;
         rows.collect::<rusqlite::Result<Vec<_>>>()
             .map_err(Into::into)
+    }
+
+    /// Every session's tool data, for the cross-session Tools report.
+    pub fn tool_sessions(&self) -> Result<Vec<StoredSession>> {
+        let mut stmt = self
+            .conn
+            .prepare("SELECT tool, session_id, started_at, message_count, tools_json FROM sessions")?;
+        let rows = stmt.query_map([], |row| {
+            let tool: String = row.get(0)?;
+            let started_at: String = row.get(2)?;
+            let json: String = row.get(4)?;
+            Ok(StoredSession {
+                tool: tool.parse().unwrap_or(ToolKind::ClaudeCode),
+                session_id: row.get(1)?,
+                started_at: chrono::DateTime::parse_from_rfc3339(&started_at)
+                    .map(|d| d.with_timezone(&chrono::Utc))
+                    .unwrap_or_else(|_| chrono::Utc::now()),
+                requests: row.get(3)?,
+                data: serde_json::from_str(&json).unwrap_or_default(),
+            })
+        })?;
+        rows.collect::<rusqlite::Result<Vec<_>>>().map_err(Into::into)
     }
 }
 
@@ -161,6 +189,7 @@ mod tests {
             compaction_count: 2,
             message_count: 5,
             cost_usd: 1.25,
+            tools: Default::default(),
         }
     }
 
@@ -179,6 +208,26 @@ mod tests {
         assert_eq!(loaded[0].cache_write_5m, 10);
         assert_eq!(loaded[0].cache_write_1h, 20);
         assert_eq!(loaded[0].peak_context_tokens, 41);
+    }
+
+    #[test]
+    fn tool_data_round_trips_through_its_own_reader() {
+        use crate::tool_usage::{CallCount, CapabilityKind, SessionTools};
+        let dir = tempfile::tempdir().unwrap();
+        let db = Db::open(&dir.path().join("usage.sqlite3")).unwrap();
+        let mut s = sample();
+        s.tools = SessionTools {
+            baseline_tokens: Some(52_000),
+            calls: vec![CallCount { kind: CapabilityKind::Builtin, name: "Bash".into(), tool: None, calls: 7, errors: 1 }],
+            listed: None,
+        };
+        db.upsert_sessions(&[s.clone()]).unwrap();
+
+        // The session list stays light.
+        assert!(db.all_sessions().unwrap()[0].tools.calls.is_empty());
+        let stored = db.tool_sessions().unwrap();
+        assert_eq!(stored[0].data, s.tools);
+        assert_eq!(stored[0].requests, 5);
     }
 
     /// Rows for transcripts that no longer exist can only leave the cache
