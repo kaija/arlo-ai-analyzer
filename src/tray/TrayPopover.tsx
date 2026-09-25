@@ -3,7 +3,7 @@ import { useTranslation } from "react-i18next";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import i18n, { getStoredLocale } from "../i18n/i18n";
-import type { Session } from "../types";
+import type { PlanReport, Session } from "../types";
 import {
   dailySpendSnapshot,
   msUntilLocalMidnight,
@@ -13,6 +13,7 @@ import {
 import { fmtCost } from "../lib/format";
 import { loadPriceCatalog } from "../lib/price-catalog";
 import { installCustomPrices, readCustomPrices } from "../lib/custom-pricing";
+import { TrayPlans } from "./TrayPlans";
 
 // ---------------------------------------------------------------------------
 // TrayPopover — the page inside the menu-bar popover window (`#/tray`).
@@ -25,13 +26,20 @@ import { installCustomPrices, readCustomPrices } from "../lib/custom-pricing";
 // page reloads its data, renders, and answers `tray_popover_ready` with its
 // height. The backend then sizes, positions under the tray icon, and shows —
 // so the window never appears with stale numbers or the wrong height.
+//
+// Plan limits come from the backend's cached report (`get_plan_status`, no
+// network), loaded with the rest. `plan-status-updated` refreshes them while
+// the popover is up; re-reporting the height then only resizes the window.
 // ---------------------------------------------------------------------------
 
 interface View {
   sessions: Session[];
   settings: DailySpendAlertSettings;
+  plans: PlanReport | null;
   now: Date;
 }
+
+const loadPlans = () => invoke<PlanReport>("get_plan_status").catch(() => null);
 
 function syncAppearance(): Promise<unknown> {
   let theme: string | null = null;
@@ -59,20 +67,27 @@ export function TrayPopover() {
     // Separate webview, separate module state: install the catalog here too.
     await loadPriceCatalog();
     installCustomPrices(readCustomPrices());
-    const sessions = await invoke<Session[]>("list_sessions").catch(() => [] as Session[]);
-    setView({ sessions, settings: readDailySpendAlertSettings(), now: new Date() });
+    const [sessions, plans] = await Promise.all([
+      invoke<Session[]>("list_sessions").catch(() => [] as Session[]),
+      loadPlans(),
+    ]);
+    setView({ sessions, settings: readDailySpendAlertSettings(), plans, now: new Date() });
   }, []);
 
   useEffect(() => {
     document.documentElement.classList.add("tray-window");
     void load();
     const unlisten = listen("tray-popover-refresh", () => void load());
+    const unlistenPlans = listen("plan-status-updated", () => {
+      void loadPlans().then((plans) => setView((v) => v && { ...v, plans, now: new Date() }));
+    });
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") void invoke("hide_tray_popover");
     };
     window.addEventListener("keydown", onKey);
     return () => {
       void unlisten.then((fn) => fn());
+      void unlistenPlans.then((fn) => fn());
       window.removeEventListener("keydown", onKey);
     };
   }, [load]);
@@ -147,6 +162,8 @@ export function TrayPopover() {
       ) : (
         <p className="tray-popover-hint">{t("tray.alertOff")}</p>
       )}
+
+      <TrayPlans report={view.plans} now={view.now.getTime()} />
 
       <div className="tray-popover-actions">
         <button type="button" className="btn btn-ghost btn-small" onClick={hide}>

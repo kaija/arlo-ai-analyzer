@@ -1,18 +1,10 @@
 import { useTranslation } from "react-i18next";
 import { Link } from "react-router-dom";
 import { Badge } from "../../primitives/Badge";
-import { Meter } from "../../primitives/Meter";
+import { QuotaWindowList } from "../../components/QuotaWindowList";
 import { useNow } from "../../hooks/useNow";
-import {
-  agoPhrase,
-  clampPercent,
-  durationPhrase,
-  issueKey,
-  resetsInMs,
-  windowPhrase,
-  type Phrase,
-} from "../../lib/plan";
-import { TOOL_LABELS, type PlanStatus, type QuotaWindow } from "../../types";
+import { agoPhrase, issueKey } from "../../lib/plan";
+import { TOOL_LABELS, type PlanStatus } from "../../types";
 
 // ---------------------------------------------------------------------------
 // PlanUsageCard
@@ -63,7 +55,6 @@ export function PlanUsageCard({ tools, online, refreshing, onRefresh }: PlanUsag
 
 function PlanToolBlock({ status, online, now }: { status: PlanStatus; online: boolean; now: number }) {
   const { t } = useTranslation();
-  const say = (p: Phrase) => t(p.key, p.params);
   const quota = status.quota;
   const windows = quota?.windows ?? [];
 
@@ -75,17 +66,13 @@ function PlanToolBlock({ status, online, now }: { status: PlanStatus; online: bo
         {status.account && <span className="plan-account">{status.account}</span>}
         {quota && (
           <span className="plan-origin">
-            {t(`plans.origin.${quota.origin}`, { ago: say(agoPhrase(quota.observed_at, now)) })}
+            {t(`plans.origin.${quota.origin}`, { ago: agoText(t, quota.observed_at, now) })}
           </span>
         )}
       </div>
 
       {windows.length > 0 ? (
-        <ul className="plan-windows">
-          {windows.map((w) => (
-            <WindowRow key={w.id} window={w} now={now} say={say} />
-          ))}
-        </ul>
+        <QuotaWindowList windows={windows} now={now} />
       ) : online ? (
         <p className="plan-note">{t("plans.card.noQuota")}</p>
       ) : (
@@ -104,19 +91,7 @@ function PlanToolBlock({ status, online, now }: { status: PlanStatus; online: bo
   );
 }
 
-function WindowRow({ window: w, now, say }: { window: QuotaWindow; now: number; say: (p: Phrase) => string }) {
-  const { t } = useTranslation();
-  const base = say(windowPhrase(w));
-  const label = w.scope ? t("plans.window.scoped", { window: base, scope: w.scope }) : base;
-  const resetsIn = resetsInMs(w.resets_at, now);
-
-  return (
-    <li className="plan-window">
-      <span>{label}</span>
-      <Meter value={clampPercent(w.used_percent)} showLabel />
-      <span className="plan-window-reset">
-        {resetsIn !== null ? t("plans.resetsIn", { time: say(durationPhrase(resetsIn)) }) : ""}
-      </span>
-    </li>
-  );
+function agoText(t: (key: string, params?: Record<string, string | number>) => string, iso: string, now: number) {
+  const ago = agoPhrase(iso, now);
+  return t(ago.key, ago.params);
 }

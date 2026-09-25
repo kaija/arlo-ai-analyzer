@@ -140,6 +140,7 @@
     "overTitle": "已超過每日預算",
     "resetsIn": "{{hours}} 小時 {{minutes}} 分後重置 · {{timeZone}}",
     "alertOff": "每日花費警示未開啟。設定每日預算後，警示會顯示在這裡。",
+    "plansHeading": "方案額度",
     "dismiss": "關閉",
     "openDashboard": "開啟儀表板",
     "setBudget": "設定每日預算",

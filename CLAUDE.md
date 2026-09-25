@@ -100,7 +100,10 @@ a second borderless window loading `index.html#/tray` (`src/tray/TrayPopover.tsx
 sized, placed under the icon and shown. The daily spend alert is evaluated in the *main* window
 (`src/tray/TrayBridge.tsx`, logic in `src/lib/spend-alert.ts`) because Codex pricing only exists on
 the front end; the hidden main webview keeps running. The popover shares settings with it through
-localStorage (same origin), not React context.
+localStorage (same origin), not React context. It also lists plan limits (`src/tray/TrayPlans.tsx`,
+the same `QuotaWindowList` as the dashboard card, `compact`), read from `get_plan_status` inside
+`load()` so they arrive with the rest before the height is reported; `plan-status-updated` refreshes
+them while it is open, and the re-reported height only resizes the window.
 
 **Frontend** — `SessionsContext` is the only thing that talks to the backend: initial `list_sessions`
 plus a 500 ms-debounced re-fetch on `usage-updated`. Providers nest Settings → Language → Sessions.

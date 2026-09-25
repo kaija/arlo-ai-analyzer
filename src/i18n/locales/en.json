@@ -140,6 +140,7 @@
     "overTitle": "Daily budget exceeded",
     "resetsIn": "Resets in {{hours}}h {{minutes}}m · {{timeZone}}",
     "alertOff": "Daily spend alert is off. Set a daily budget to get a pop-up here.",
+    "plansHeading": "Plan limits",
     "dismiss": "Dismiss",
     "openDashboard": "Open dashboard",
     "setBudget": "Set daily budget",

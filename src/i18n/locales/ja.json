@@ -140,6 +140,7 @@
     "overTitle": "1日の予算を超えました",
     "resetsIn": "あと {{hours}} 時間 {{minutes}} 分でリセット · {{timeZone}}",
     "alertOff": "1日の支出アラートはオフです。1日の予算を設定すると、ここにポップアップが表示されます。",
+    "plansHeading": "プランの上限",
     "dismiss": "閉じる",
     "openDashboard": "ダッシュボードを開く",
     "setBudget": "1日の予算を設定",
