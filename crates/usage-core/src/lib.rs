@@ -1,6 +1,7 @@
 pub mod db;
 pub mod model;
 pub mod paths;
+pub mod plan;
 pub mod pricing;
 pub mod sample;
 pub mod source;

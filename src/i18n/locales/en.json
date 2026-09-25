@@ -165,5 +165,76 @@
     "chooseFolder": "Choose folder…",
     "hint": "macOS asks you to confirm each folder. It opens in the right place — just click Open.",
     "noneFound": "No Claude Code or Codex CLI logs were found on this Mac. Choose a folder if you keep them elsewhere, or look around with sample data."
+  },
+  "plans": {
+    "card": {
+      "title": "Plan usage",
+      "subtitle": "How much of each subscription's current limits is used.",
+      "refresh": "Refresh",
+      "refreshing": "Refreshing…",
+      "noQuota": "No limits recorded yet — they appear after the next request.",
+      "turnOnLive": "Turn on online checks in Settings to see these limits.",
+      "openSettings": "Open Settings"
+    },
+    "settings": {
+      "title": "Plans & limits",
+      "subtitle": "Read from each tool's own sign-in on this Mac. Nothing is sent anywhere unless online checks are on.",
+      "none": "No Claude Code or Codex CLI installation found on this Mac.",
+      "planUnknown": "Plan unknown",
+      "refreshNow": "Refresh now",
+      "refreshing": "Refreshing…",
+      "online": {
+        "label": "Check plan limits online",
+        "hint": "Asks Anthropic or OpenAI for current usage with the tool's own sign-in — the same request its /usage or /status makes. Each token goes only to that tool's vendor, and is never renewed or stored by this app. Codex limits are also read from its logs without this.",
+        "off": "Off — showing only what is on this Mac",
+        "checked": "Last checked {{ago}}",
+        "notYet": "Not checked yet"
+      }
+    },
+    "auth": {
+      "subscription": "Subscription",
+      "api_key": "API key",
+      "signed_out": "Signed out"
+    },
+    "source": {
+      "file": "Read from {{path}}",
+      "keychain": "Read from the macOS Keychain",
+      "logs": "Plan read from the tool's logs"
+    },
+    "origin": {
+      "live": "Live · {{ago}}",
+      "logs": "From logs · {{ago}}"
+    },
+    "window": {
+      "hours": "{{count}}-hour limit",
+      "daily": "Daily limit",
+      "days": "{{count}}-day limit",
+      "weekly": "Weekly limit",
+      "minutes": "{{count}}-minute limit",
+      "extraUsage": "Extra usage this month",
+      "other": "Other limit",
+      "scoped": "{{window}} · {{scope}}"
+    },
+    "resetsIn": "Resets in {{time}}",
+    "duration": {
+      "dh": "{{d}}d {{h}}h",
+      "hm": "{{h}}h {{m}}m",
+      "m": "{{m}}m",
+      "lessThanMinute": "under a minute"
+    },
+    "ago": {
+      "justNow": "just now",
+      "minutes": "{{count}} min ago",
+      "hours": "{{count}} h ago",
+      "days": "{{count}} d ago"
+    },
+    "issue": {
+      "credentials_unreadable": "Couldn't read this tool's sign-in. The Keychain may have refused, or — in the App Store version — the folder chosen under Logs directory doesn't include it (choose ~/.claude or ~/.codex itself).",
+      "sign_in_expired": "The saved sign-in has expired. Run the tool once to renew it.",
+      "no_usage_access": "This sign-in is a long-lived token that can't report plan limits. Sign in with /login to see them.",
+      "unauthorized": "The vendor rejected the saved sign-in. Sign in to the tool again.",
+      "rate_limited": "Checked too often — the vendor asked to wait. Trying again later.",
+      "failed": "Couldn't get current limits from the vendor."
+    }
   }
 }

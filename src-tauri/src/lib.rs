@@ -1,6 +1,7 @@
 mod access;
 mod bookmark;
 mod catalog;
+mod plans;
 mod tray;
 
 use std::path::{Path, PathBuf};
@@ -9,6 +10,7 @@ use std::sync::{Arc, Mutex};
 use access::{AccessConfig, DataAccess, Granted};
 use catalog::{Catalog, CatalogService, CatalogStatus};
 use notify::RecommendedWatcher;
+use plans::{PlanReport, PlanService};
 use tauri::{AppHandle, Emitter, Manager};
 use tauri_plugin_dialog::DialogExt;
 use usage_core::{Db, Roots, Session, SessionDetail, ToolKind};
@@ -18,6 +20,7 @@ struct AppState {
     db: Mutex<Db>,
     sources: Mutex<Sources>,
     catalog: Arc<CatalogService>,
+    plans: Arc<PlanService>,
 }
 
 /// Where data is read from right now. Replaced as a whole whenever the user
@@ -65,6 +68,7 @@ fn start_watcher(app: &AppHandle, roots: &Roots) -> Option<RecommendedWatcher> {
             if let Ok(db) = state.db.lock() {
                 let _ = db.upsert_sessions(&sessions);
             }
+            state.plans.logs_changed();
         }
         let _ = handle.emit("usage-updated", ());
     })
@@ -94,6 +98,9 @@ fn apply_config(app: &AppHandle, config: AccessConfig, granted: Granted) -> Resu
 
     let watcher = start_watcher(app, &roots);
     let described = access::describe(config.sample, &granted);
+    // Plans follow the user's own sign-in, so they read the real folders even
+    // while sample data is shown.
+    state.plans.set_roots(granted.roots());
     *state.sources.lock().map_err(|e| e.to_string())? = Sources { config, granted, roots, _watcher: watcher };
 
     let _ = app.emit("usage-updated", ());
@@ -245,6 +252,27 @@ async fn check_price_catalog(app: AppHandle) -> Result<CatalogStatus, String> {
     .map_err(|e| e.to_string())?
 }
 
+#[tauri::command]
+fn get_plan_status(state: tauri::State<AppState>) -> PlanReport {
+    state.plans.report()
+}
+
+/// "Refresh now" in the UI. Blocks on the network while live checks are on,
+/// so it runs off the main thread.
+#[tauri::command]
+async fn refresh_plan_status(app: AppHandle) -> Result<PlanReport, String> {
+    let service = app.state::<AppState>().plans.clone();
+    tauri::async_runtime::spawn_blocking(move || service.refresh_now(&app))
+        .await
+        .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+fn set_plan_online_enabled(state: tauri::State<AppState>, enabled: bool) -> Result<PlanReport, String> {
+    state.plans.set_online(enabled)?;
+    Ok(state.plans.report())
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
@@ -270,9 +298,11 @@ pub fn run() {
 
             let watcher = start_watcher(app.handle(), &roots);
             let catalog = CatalogService::start(app.handle(), data_dir.clone());
+            let plans = PlanService::start(app.handle(), data_dir.clone(), granted.roots());
             app.manage(AppState {
                 data_dir,
                 catalog,
+                plans,
                 db: Mutex::new(db),
                 sources: Mutex::new(Sources { config, granted, roots, _watcher: watcher }),
             });
@@ -294,6 +324,9 @@ pub fn run() {
             get_price_catalog_status,
             set_price_catalog_enabled,
             check_price_catalog,
+            get_plan_status,
+            refresh_plan_status,
+            set_plan_online_enabled,
             tray::show_tray_popover,
             tray::tray_popover_ready,
             tray::hide_tray_popover,

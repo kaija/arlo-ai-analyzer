@@ -23,6 +23,8 @@ import { TOKEN_KIND_COLORS } from "../../charts/MiniStackBar";
 import { useSessionsContext } from "../../context/SessionsContext";
 import { useSettingsContext } from "../../context/SettingsContext";
 import { contextHealthSessions } from "../../lib/insights";
+import { subscribedTools } from "../../lib/plan";
+import { usePlanStatus } from "../../hooks/usePlanStatus";
 import { FilterBar, FilterBarSep } from "../../primitives/FilterBar";
 import { FilterChip } from "../../primitives/FilterChip";
 import { SegmentedControl } from "../../primitives/SegmentedControl";
@@ -30,6 +32,7 @@ import { CustomDatePopover } from "../../primitives/CustomDatePopover";
 import { AlertBanner } from "./AlertBanner";
 import { WarnStrip } from "./WarnStrip";
 import { StatTilesRow } from "./StatTilesRow";
+import { PlanUsageCard } from "./PlanUsageCard";
 import { UsageChartCard } from "./UsageChartCard";
 import { BreakdownTables } from "./BreakdownTables";
 import { Onboarding } from "./Onboarding";
@@ -159,6 +162,8 @@ export default function DashboardPage() {
   const { sessions, loading, scanState } = useSessionsContext();
   const { contextAlertThreshold } = useSettingsContext();
   const navigate = useNavigate();
+  const plans = usePlanStatus();
+  const planTools = subscribedTools(plans.report);
 
   // --- filter state ---
   const [measure, setMeasure] = useState<Measure>("tokens");
@@ -594,6 +599,18 @@ export default function DashboardPage() {
           projects={projectCount}
           branches={branchCount}
         />
+
+        {/* Plan limits — only for tools signed in with a subscription */}
+        {planTools.length > 0 && (
+          <div className="section-gap">
+            <PlanUsageCard
+              tools={planTools}
+              online={plans.report?.online ?? false}
+              refreshing={plans.refreshing}
+              onRefresh={() => void plans.refresh()}
+            />
+          </div>
+        )}
 
         {/* Usage chart */}
         {!showScanning && (

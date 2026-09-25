@@ -1,4 +1,4 @@
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 /// The user's real home directory.
 ///
@@ -35,6 +35,14 @@ pub fn real_home_dir() -> Option<PathBuf> {
     dirs::home_dir()
 }
 
+/// `path` for display, with the real home directory written as `~`.
+pub fn display_path(path: &Path) -> String {
+    match real_home_dir().and_then(|home| path.strip_prefix(home).ok().map(Path::to_path_buf)) {
+        Some(rest) => format!("~/{}", rest.display()),
+        None => path.display().to_string(),
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -43,5 +51,12 @@ mod tests {
     fn real_home_dir_is_absolute() {
         let home = real_home_dir().expect("a home directory");
         assert!(home.is_absolute());
+    }
+
+    #[test]
+    fn display_path_abbreviates_home() {
+        let home = real_home_dir().expect("a home directory");
+        assert_eq!(display_path(&home.join(".codex/auth.json")), "~/.codex/auth.json");
+        assert_eq!(display_path(Path::new("/opt/elsewhere")), "/opt/elsewhere");
     }
 }

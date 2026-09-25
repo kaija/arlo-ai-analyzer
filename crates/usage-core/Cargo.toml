@@ -11,6 +11,8 @@ rusqlite.workspace = true
 notify.workspace = true
 anyhow.workspace = true
 dirs = "5"
+# Reading the claims of JWTs the tools saved (plan/codex_cli.rs).
+base64 = "0.22"
 
 [target.'cfg(unix)'.dependencies]
 libc = "0.2"

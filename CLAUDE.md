@@ -4,8 +4,10 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What this is
 
-Tauri 2 desktop app that reads local AI coding-tool logs and reports tokens/cost. Offline except one
-anonymous daily fetch of the model price catalog (switchable off in Settings); no vendor APIs. Claude Code (`~/.claude/projects`) and Codex CLI (`~/.codex/sessions`)
+Tauri 2 desktop app that reads local AI coding-tool logs and reports tokens/cost, plus each tool's
+subscription plan and quota. Offline except one anonymous daily fetch of the model price catalog
+(switchable off in Settings) and, only when the user turns it on, live plan-limit checks sent to each
+tool's own vendor with that tool's own sign-in. Claude Code (`~/.claude/projects`) and Codex CLI (`~/.codex/sessions`)
 are implemented; Cursor and Gemini CLI are deliberate stubs
 (`crates/usage-core/src/sources/*.rs`) that return empty vecs.
 
@@ -36,9 +38,35 @@ with vitest globals. A type error in a test only shows up in the second pass.
 
 **`src-tauri`** — thin. Data commands (plus the tray's, below): `list_sessions`, `get_session_detail`, `rescan`,
 `reset_database`, and the folder-access ones `get_data_access`, `grant_source_access`,
-`clear_source_access`, `set_sample_data`. On setup it resolves the log roots, scans, upserts, and
+`clear_source_access`, `set_sample_data`, and the plan ones `get_plan_status`, `refresh_plan_status`,
+`set_plan_online_enabled`. On setup it resolves the log roots, scans, upserts, and
 starts a `notify` watcher on them that rescans and emits `usage-updated`; the watcher is held in
 `AppState` and replaced whenever the roots change.
+
+### Plans and quotas (`usage_core::plan`, `src-tauri/src/plans.rs`)
+
+Separate from `sources` (history): what each tool is signed in with and how much of its current
+limits is used. One `PlanProvider` per tool — add a module and a line in `plan::providers()`; the
+front end renders whatever `PlanStatus`es come back. Two tiers:
+
+- `detect` — local only: the tool's own credential store and logs. Claude Code:
+  `<config dir>/.credentials.json`, else the macOS keychain item `Claude Code-credentials` read
+  through `/usr/bin/security` (the tool Claude Code stores it with, so no prompt); plan from
+  `subscriptionType` + `rateLimitTier`, account from `~/.claude.json`. Codex: `~/.codex/auth.json`
+  (plan and email are JWT claims of `id_token`) and — no network — the newest rollout's
+  `token_count.rate_limits`, which is also how a keyring-stored sign-in is recognised.
+- `fetch_live` — only with the Settings switch on (off by default, persisted in
+  `plan-status-state.json`): `GET api.anthropic.com/api/oauth/usage` / `chatgpt.com/backend-api/wham/usage`
+  with the saved access token. **Never refresh a token** — both CLIs rotate refresh tokens, so doing
+  it here would sign the CLI out; an expired one is reported as `sign_in_expired`. `usage-core` gets
+  HTTP through the `HttpClient` trait; the ureq client lives in `plans.rs`.
+
+A provider's home is the parent of its log root, so a granted `~/.claude` or `~/.codex` covers both
+(a grant of `sessions/` alone still gives Codex limits from logs, not `auth.json`). Plans always use
+the real roots, even in sample mode. `PlanService` re-detects every 5 min, after log changes
+(throttled to 15 s), and on demand; live checks run at most every ~5 min (30 s for "Refresh now");
+`carry_over` keeps the freshest quota between passes. Windows past their reset time read as 0%.
+Emits `plan-status-updated`; `usePlanStatus` (`src/hooks/`) is the front-end side.
 
 ### Sandbox and folder access (App Store build)
 
@@ -55,7 +83,7 @@ The App Store build is sandboxed with **no** home-relative temporary exception (
   `readable` (listable) tells onboarding which tools are installed but not yet allowed. Onboarding
   (`src/pages/Dashboard/Onboarding.tsx`) replaces the whole dashboard while there are no sessions;
   "Allow access to both" opens one picker per found tool in turn and stops on a cancel.
-- `com.apple.security.network.client` is required even though the app makes no network calls: a
+- `com.apple.security.network.client` is required even with online features off: a
   sandboxed WKWebView renders a blank window without it.
 - Sample data (`usage_core::sample`) writes real-format transcripts under the data dir, relative to
   now, and scans them with the normal parsers into a separate `usage-sample.sqlite3`. It is what
@@ -147,7 +175,7 @@ price must be added here; the catalog will not correct it.
 An unknown model returns `None`/`null`, which means **unknown, not free** — the UI must render "—",
 never `$0.00`. Keep `pricing.rs` and `pricing.ts` in sync when adding a model.
 
-### The price catalog (the app's only network call)
+### The price catalog (the app's only unprompted network call)
 
 `.github/workflows/pages.yml` runs daily (and on pushes touching `site/**`, `PRIVACY.md`, the
 scripts) and deploys `scripts/build-site.sh`'s output to GitHub Pages at

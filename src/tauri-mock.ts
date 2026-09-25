@@ -61,6 +61,14 @@ export async function invoke<T = unknown>(cmd: string, _args?: unknown): Promise
       model_count: 0,
     } as unknown as T;
   }
+  if (cmd === "get_plan_status" || cmd === "refresh_plan_status" || cmd === "set_plan_online_enabled") {
+    return {
+      online: (_args as { enabled?: boolean } | undefined)?.enabled ?? false,
+      checked_at: null,
+      live_checked_at: null,
+      tools: [],
+    } as unknown as T;
+  }
   return undefined as unknown as T;
 }
 

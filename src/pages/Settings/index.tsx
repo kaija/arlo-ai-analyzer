@@ -4,6 +4,7 @@ import PlanBudgetCard from "./PlanBudgetCard";
 import { DailySpendAlertCard } from "./DailySpendAlertCard";
 import { NotificationsCard } from "./NotificationsCard";
 import { LogsDirectoryCard } from "./LogsDirectoryCard";
+import { PlansCard } from "./PlansCard";
 import { PricingCard } from "./PricingCard";
 import { LanguageCard } from "./LanguageCard";
 import { DatabaseCard } from "./DatabaseCard";
@@ -22,7 +23,7 @@ export default function SettingsPage() {
   const location = useLocation();
 
   useEffect(() => {
-    if (!["#pricing", "#daily-spend-alert", "#logs-directory"].includes(location.hash)) return;
+    if (!["#pricing", "#daily-spend-alert", "#logs-directory", "#plans"].includes(location.hash)) return;
 
     const card = document.getElementById(location.hash.slice(1));
     card?.scrollIntoView({ block: "start" });
@@ -38,6 +39,7 @@ export default function SettingsPage() {
         <DailySpendAlertCard />
         <NotificationsCard />
         <LogsDirectoryCard />
+        <PlansCard />
         <PricingCard />
         <LanguageCard />
         <DatabaseCard />
