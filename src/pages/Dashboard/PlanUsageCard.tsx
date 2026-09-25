@@ -10,7 +10,8 @@ import { TOOL_LABELS, type PlanStatus } from "../../types";
 // PlanUsageCard
 //
 // One block per tool signed in with a subscription: its plan, and a meter per
-// limit window with the time until it resets. Presentational — the dashboard
+// limit window with the time until it resets. A tool whose sign-in couldn't be
+// read gets a block too, saying why. Presentational — the dashboard
 // passes the tools in (see usePlanStatus), and only renders the card when
 // there is at least one.
 // ---------------------------------------------------------------------------
@@ -55,6 +56,7 @@ export function PlanUsageCard({ tools, online, refreshing, onRefresh }: PlanUsag
 
 function PlanToolBlock({ status, online, now }: { status: PlanStatus; online: boolean; now: number }) {
   const { t } = useTranslation();
+  const subscribed = status.auth === "subscription";
   const quota = status.quota;
   const windows = quota?.windows ?? [];
 
@@ -62,7 +64,9 @@ function PlanToolBlock({ status, online, now }: { status: PlanStatus; online: bo
     <div className="plan-tool" data-testid={`plan-${status.tool}`}>
       <div className="plan-tool-head">
         <span className="plan-tool-name">{TOOL_LABELS[status.tool]}</span>
-        <Badge variant="accent">{status.plan ?? t("plans.settings.planUnknown")}</Badge>
+        <Badge variant={subscribed ? "accent" : "neutral"}>
+          {subscribed ? (status.plan ?? t("plans.settings.planUnknown")) : t(`plans.auth.${status.auth}`)}
+        </Badge>
         {status.account && <span className="plan-account">{status.account}</span>}
         {quota && (
           <span className="plan-origin">
@@ -71,7 +75,7 @@ function PlanToolBlock({ status, online, now }: { status: PlanStatus; online: bo
         )}
       </div>
 
-      {windows.length > 0 ? (
+      {!subscribed ? null : windows.length > 0 ? (
         <QuotaWindowList windows={windows} now={now} />
       ) : online ? (
         <p className="plan-note">{t("plans.card.noQuota")}</p>

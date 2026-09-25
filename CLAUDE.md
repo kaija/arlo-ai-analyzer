@@ -51,7 +51,8 @@ front end renders whatever `PlanStatus`es come back. Two tiers:
 
 - `detect` — local only: the tool's own credential store and logs. Claude Code:
   `<config dir>/.credentials.json`, else the macOS keychain item `Claude Code-credentials` read
-  through `/usr/bin/security` (the tool Claude Code stores it with, so no prompt); plan from
+  through `/usr/bin/security` (the tool Claude Code stores it with, so no prompt) under the same
+  account (`-a $USER`, else `claude-code-user`) — without it a stale item can win; plan from
   `subscriptionType` + `rateLimitTier`, account from `~/.claude.json`. Codex: `~/.codex/auth.json`
   (plan and email are JWT claims of `id_token`) and — no network — the newest rollout's
   `token_count.rate_limits`, which is also how a keyring-stored sign-in is recognised.
@@ -66,7 +67,9 @@ A provider's home is the parent of its log root, so a granted `~/.claude` or `~/
 the real roots, even in sample mode. `PlanService` re-detects every 5 min, after log changes
 (throttled to 15 s), and on demand; live checks run at most every ~5 min (30 s for "Refresh now");
 `carry_over` keeps the freshest quota between passes. Windows past their reset time read as 0%.
-Emits `plan-status-updated`; `usePlanStatus` (`src/hooks/`) is the front-end side.
+Emits `plan-status-updated`; `usePlanStatus` (`src/hooks/`) is the front-end side. The dashboard
+card and the popover list `planTools()`: subscriptions, plus any tool with an `issue`, so a sign-in
+that couldn't be read is explained rather than silently missing.
 
 ### Sandbox and folder access (App Store build)
 

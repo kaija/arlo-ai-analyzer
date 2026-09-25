@@ -16,9 +16,14 @@ const HOUR = 60;
 const DAY = 24 * HOUR;
 const WEEK = 7 * DAY;
 
-/** Tools worth a place on the dashboard: signed in with a plan that has limits. */
-export function subscribedTools(report: PlanReport | null): PlanStatus[] {
-  return (report?.tools ?? []).filter((t) => t.auth === "subscription");
+/**
+ * Tools the dashboard card and the popover list: those signed in with a plan
+ * that has limits, and those whose sign-in couldn't be read — so a failure
+ * says why instead of the tool silently not being there. Signed out or on an
+ * API key without a problem, a tool has no limits to show.
+ */
+export function planTools(report: PlanReport | null): PlanStatus[] {
+  return (report?.tools ?? []).filter((t) => t.auth === "subscription" || t.issue !== null);
 }
 
 /** What a window limits, named by its length: "5-hour limit", "Weekly limit". */

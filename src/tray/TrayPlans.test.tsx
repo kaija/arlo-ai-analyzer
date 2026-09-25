@@ -73,6 +73,19 @@ describe("TrayPlans", () => {
     expect(screen.queryByText("Plan limits")).not.toBeInTheDocument();
   });
 
+  it("names a tool whose sign-in couldn't be read, and why", () => {
+    render(
+      <TrayPlans
+        report={report([status({ tool: "claude_code", auth: "signed_out", plan: null, issue: { kind: "credentials_unreadable" } })])}
+        now={NOW}
+      />,
+    );
+    const block = screen.getByTestId("tray-plan-claude_code");
+    expect(within(block).getByText("Signed out")).toBeInTheDocument();
+    expect(within(block).getByText(/Couldn't read this tool's sign-in/)).toBeInTheDocument();
+    expect(within(block).queryByText(/Turn on online checks/)).not.toBeInTheDocument();
+  });
+
   it("says why a plan has no limits yet", () => {
     render(<TrayPlans report={report([status({ tool: "claude_code", plan: "Max 5x" })])} now={NOW} />);
     expect(screen.getByText(/Turn on online checks/)).toBeInTheDocument();

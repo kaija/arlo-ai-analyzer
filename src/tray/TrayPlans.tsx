@@ -1,14 +1,15 @@
 import { useTranslation } from "react-i18next";
 import { Badge } from "../primitives/Badge";
 import { QuotaWindowList } from "../components/QuotaWindowList";
-import { subscribedTools } from "../lib/plan";
+import { issueKey, planTools } from "../lib/plan";
 import { TOOL_LABELS, type PlanReport } from "../types";
 
 // ---------------------------------------------------------------------------
 // TrayPlans — the popover's plan-limits section.
 //
-// The same windows as the dashboard's Plan usage card, compact for the
-// popover's width; nothing at all when no tool is signed in with a plan.
+// The same tools and windows as the dashboard's Plan usage card, compact for
+// the popover's width: tools on a plan, and tools whose sign-in couldn't be
+// read (with the reason). Nothing at all when there are neither.
 // ---------------------------------------------------------------------------
 
 interface TrayPlansProps {
@@ -19,7 +20,7 @@ interface TrayPlansProps {
 
 export function TrayPlans({ report, now }: TrayPlansProps) {
   const { t } = useTranslation();
-  const tools = subscribedTools(report);
+  const tools = planTools(report);
   if (tools.length === 0) return null;
 
   return (
@@ -28,18 +29,29 @@ export function TrayPlans({ report, now }: TrayPlansProps) {
         {t("tray.plansHeading")}
       </div>
       {tools.map((status) => {
+        const subscribed = status.auth === "subscription";
         const windows = status.quota?.windows ?? [];
         return (
           <div key={status.tool} className="tray-plan-tool" data-testid={`tray-plan-${status.tool}`}>
             <div className="tray-plan-tool-head">
               <span>{TOOL_LABELS[status.tool]}</span>
-              <Badge variant="accent">{status.plan ?? t("plans.settings.planUnknown")}</Badge>
+              <Badge variant={subscribed ? "accent" : "neutral"}>
+                {subscribed ? (status.plan ?? t("plans.settings.planUnknown")) : t(`plans.auth.${status.auth}`)}
+              </Badge>
             </div>
-            {windows.length > 0 ? (
+            {!subscribed ? null : windows.length > 0 ? (
               <QuotaWindowList windows={windows} now={now} compact />
             ) : (
               <p className="tray-popover-hint">
                 {report?.online ? t("plans.card.noQuota") : t("plans.card.turnOnLive")}
+              </p>
+            )}
+            {status.issue && (
+              <p
+                className="tray-popover-hint plan-issue"
+                title={status.issue.kind === "failed" ? status.issue.detail : undefined}
+              >
+                {t(issueKey(status.issue))}
               </p>
             )}
           </div>
