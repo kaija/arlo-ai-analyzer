@@ -5,6 +5,8 @@ interface AlertBannerProps {
   message: string;
   sessionId?: string;
   meta?: string;
+  /** Called on dismiss so the caller can remember it beyond this mount. */
+  onDismiss?: () => void;
 }
 
 /**
@@ -12,7 +14,7 @@ interface AlertBannerProps {
  * Uses the exact token class hierarchy from tokens.css:
  *   .alert-banner > .icon-tile + .body (.body strong + .meta) + .actions
  */
-export function AlertBanner({ message, sessionId, meta }: AlertBannerProps) {
+export function AlertBanner({ message, sessionId, meta, onDismiss }: AlertBannerProps) {
   const [dismissed, setDismissed] = useState(false);
   if (dismissed) return null;
 
@@ -38,7 +40,7 @@ export function AlertBanner({ message, sessionId, meta }: AlertBannerProps) {
         )}
         <button
           className="btn btn-ghost btn-small"
-          onClick={() => setDismissed(true)}
+          onClick={() => { setDismissed(true); onDismiss?.(); }}
           aria-label="Dismiss"
         >
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">

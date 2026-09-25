@@ -23,6 +23,7 @@ import { TOKEN_KIND_COLORS } from "../../charts/MiniStackBar";
 import { useSessionsContext } from "../../context/SessionsContext";
 import { useSettingsContext } from "../../context/SettingsContext";
 import { contextHealthSessions } from "../../lib/insights";
+import { dismissContextAlerts, loadDismissedContextAlerts } from "../../lib/context-alert";
 import { planTools } from "../../lib/plan";
 import { usePlanStatus } from "../../hooks/usePlanStatus";
 import { FilterBar, FilterBarSep } from "../../primitives/FilterBar";
@@ -348,10 +349,15 @@ export default function DashboardPage() {
   }, [drillDayIndex, dayBuckets]);
 
   // --- alert banner: highest-context session above threshold ---
-  const alertSession = useMemo(() => {
-    const flagged = contextHealthSessions(sessions, contextAlertThreshold);
-    return flagged.length > 0 ? flagged[0] : null;
-  }, [sessions, contextAlertThreshold]);
+  const [dismissedAlerts, setDismissedAlerts] = useState(loadDismissedContextAlerts);
+  const flaggedSessions = useMemo(
+    () => contextHealthSessions(sessions, contextAlertThreshold).filter((r) => !dismissedAlerts.has(r.sessionId)),
+    [sessions, contextAlertThreshold, dismissedAlerts]
+  );
+  const alertSession = flaggedSessions.length > 0 ? flaggedSessions[0] : null;
+  function dismissAlert() {
+    setDismissedAlerts((cur) => dismissContextAlerts(cur, flaggedSessions.map((r) => r.sessionId)));
+  }
 
   // --- unpriced model warning ---
   const hasUnpricedModel = useMemo(
@@ -457,6 +463,7 @@ export default function DashboardPage() {
           message={`Session ${alertSession.sessionName} is at ${Math.round(alertSession.contextPct)}% of its context window.`}
           meta="Consider /compact, or hand off to a fresh session."
           sessionId={alertSession.sessionId}
+          onDismiss={dismissAlert}
         />
       )}
       {hasUnpricedModel && (
