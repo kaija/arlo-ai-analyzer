@@ -18,7 +18,15 @@ make dev            # full Tauri app (real data from ~/.claude/projects)
 make test           # cargo test --workspace + pnpm vitest --run
 make lint           # clippy -D warnings + tsc on both tsconfigs
 make release        # optimized bundle
+make appstore BUILD=<n>   # signed Mac App Store .pkg (scripts/build-appstore.sh)
 ```
+
+**Releasing to the App Store** is automatic: merging into `release` runs
+`.github/workflows/app-store.yml` — lint, test, `scripts/build-appstore.sh`, `xcrun altool` upload to
+App Store Connect, then an `appstore/<version>-build<n>` tag. Bump `version` in `tauri.conf.json`
+before merging a new release. The build number is the run number + `vars.BUILD_NUMBER_OFFSET`
+(`app-store` environment, which also holds the signing and API-key secrets listed in the workflow);
+after an upload by hand, raise the offset past it. Submitting for review stays manual.
 
 Single test:
 - Rust: `cargo test -p usage-core dedupe` (substring match on test name)
