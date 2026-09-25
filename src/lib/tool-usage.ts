@@ -47,6 +47,27 @@ const BUILTIN_AGENTS = new Set([
   "output-style-setup",
 ]);
 
+/**
+ * MCP servers the Claude desktop app attaches to its Code sessions. `ccd_*` is
+ * the app's own plumbing (nothing to switch off); the rest are app features,
+ * toggled in the app rather than with `claude mcp`.
+ */
+function isDesktopAppPlumbing(server: string): boolean {
+  return server.startsWith("ccd_");
+}
+const DESKTOP_APP_SERVERS = new Set([
+  "Claude_Browser",
+  "Claude_Preview",
+  "Claude_Code_iOS_Simulator",
+  "Control_Chrome",
+  "claude-in-chrome",
+  "computer-use",
+  "scheduled-tasks",
+  "mcp-registry",
+  "terminal",
+  "visualize",
+]);
+
 /** How long something new gets before "never used" is held against it. */
 export const GRACE_DAYS = 7;
 const DAY_MS = 86_400_000;
@@ -265,7 +286,10 @@ export function analyzeToolUsage(
       lastUsed: a?.lastUsed ?? null,
       installed: l?.current ?? false,
       everListed: l !== undefined && l.sessions_listed > 0,
-      removable: kind !== "builtin" && !(kind === "subagent" && BUILTIN_AGENTS.has(name)),
+      removable:
+        kind !== "builtin" &&
+        !(kind === "subagent" && BUILTIN_AGENTS.has(name)) &&
+        !(tool === "claude_code" && kind === "mcp" && isDesktopAppPlumbing(name)),
       listingTokens: l?.tokens ?? null,
       mcpTools: l?.tools ?? 0,
       toolCalls: [...(a?.toolCalls ?? new Map<string, number>()).entries()]
@@ -478,17 +502,128 @@ export function fixSnippet(tool: ToolKind, rec: Recommendation): string | null {
       const body = names.map((n) => `    ${JSON.stringify(n)}: "${value}"`).join(",\n");
       return `// ~/.claude/settings.json\n{\n  "skillOverrides": {\n${body}\n  }\n}`;
     }
-    case "unused_mcp":
-      return names
-        .map((n) =>
-          isConnector(n)
-            ? `# ${n}: claude.ai connector — turn it off in claude.ai → Settings → Connectors`
-            : `claude mcp remove ${n}`,
-        )
-        .join("\n");
+    case "unused_mcp": {
+      const connectors = names.filter(isConnector);
+      const desktop = names.filter((n) => !isConnector(n) && DESKTOP_APP_SERVERS.has(n));
+      const configured = names.filter((n) => !isConnector(n) && !DESKTOP_APP_SERVERS.has(n));
+      const sections: string[] = [];
+      if (configured.length > 0) {
+        sections.push(
+          "# Added with `claude mcp add` or a plugin — run in a terminal\n" +
+            "# (a plugin's server goes away with `claude plugin disable <plugin>` instead):\n" +
+            configured.map((n) => `claude mcp remove ${n}`).join("\n"),
+        );
+      }
+      if (connectors.length > 0) {
+        sections.push(
+          "# claude.ai connectors (the log only has their ids) —\n" +
+            "# turn off the ones you don't use in claude.ai → Settings → Connectors:\n" +
+            connectors.map((n) => `#   ${n}`).join("\n"),
+        );
+      }
+      if (desktop.length > 0) {
+        sections.push(
+          "# Features of the Claude desktop app — turn them off in the app's settings, or leave them:\n" +
+            desktop.map((n) => `#   ${n}`).join("\n"),
+        );
+      }
+      return sections.join("\n\n");
+    }
     case "unused_subagents":
       return names.map((n) => `rm ~/.claude/agents/${n}.md   # or .claude/agents/ in the project`).join("\n");
     default:
       return null;
   }
+}
+
+// ---------------------------------------------------------------------------
+// A prompt for the user's own coding agent
+// ---------------------------------------------------------------------------
+
+export interface PromptFinding {
+  /** The recommendation's title and body, already rendered (in English). */
+  title: string;
+  body: string;
+  /** Language the agent should answer in, e.g. "Traditional Chinese". */
+  replyLanguage: string;
+}
+
+const KIND_LABEL: Record<CapabilityKind, string> = {
+  builtin: "built-in tool",
+  mcp: "MCP server",
+  skill: "skill",
+  subagent: "subagent",
+};
+
+function whereToLook(tool: ToolKind): string[] {
+  return tool === "codex_cli"
+    ? [
+        "`~/.codex/config.toml` (`[mcp_servers.*]`, `[[skills.config]]`)",
+        "`~/.codex/skills/` and any skills folders it lists",
+        "`AGENTS.md` files (global `~/.codex/AGENTS.md` and in the project)",
+      ]
+    : [
+        "`claude mcp list` and `claude plugin list` (run them)",
+        "`~/.claude.json` (user- and local-scope MCP servers) and the project's `.mcp.json`",
+        "`~/.claude/settings.json` and `.claude/settings.json` (`enabledPlugins`, `skillOverrides`)",
+        "`~/.claude/skills/`, `~/.claude/agents/` and the project's `.claude/`",
+        "`CLAUDE.md` files (global `~/.claude/CLAUDE.md` and in the project)",
+      ];
+}
+
+/**
+ * A self-contained request to paste into Claude Code or Codex, asking it to
+ * work out where each flagged item comes from and apply the fix with the
+ * user's go-ahead.
+ */
+export function fixPrompt(a: ToolAnalysis, rec: Recommendation, finding: PromptFinding): string {
+  const cli = a.tool === "codex_cli" ? "Codex CLI" : "Claude Code";
+  const lines: string[] = [
+    `I want to cut the context my ${cli} setup loads on every request. A usage analyzer read my local ${cli} logs ` +
+      `(${a.sessions.toLocaleString("en-US")} sessions, ${a.requests.toLocaleString("en-US")} requests) and reported:`,
+    "",
+    `> ${finding.title}`,
+    `> ${finding.body}`,
+  ];
+
+  if (rec.items.length > 0) {
+    lines.push("", "Flagged items:");
+    for (const r of rec.items) {
+      const facts = [KIND_LABEL[r.kind]];
+      if (r.listingTokens !== null) facts.push(`≈ ${r.listingTokens.toLocaleString("en-US")} tokens per request`);
+      facts.push(r.calls === 0 ? "never called in this period" : `${r.calls} calls in ${r.sessionsUsed} sessions`);
+      if (r.errors > 0) facts.push(`${r.errors} failed`);
+      if (r.path) facts.push(`at ${r.path}`);
+      lines.push(`- ${r.name} (${facts.join(", ")})`);
+    }
+    if (rec.items.some((r) => isConnector(r.name))) {
+      lines.push(
+        "",
+        "Names that look like UUIDs or start with `claude_ai_` are claude.ai connectors; the log records only their id.",
+      );
+    }
+  }
+
+  if (rec.tokensPerRequest !== null && rec.tokensPerRequest > 0) {
+    lines.push("", `Estimated saving: ≈ ${rec.tokensPerRequest.toLocaleString("en-US")} tokens per request.`);
+  }
+
+  const snippet = fixSnippet(a.tool, rec);
+  if (snippet) {
+    lines.push("", "The analyzer suggested this change, which may not fit my setup exactly:", "```", snippet, "```");
+  }
+
+  lines.push(
+    "",
+    "Please:",
+    "1. Find where each item is configured. Places to check:",
+    ...whereToLook(a.tool).map((w) => `   - ${w}`),
+    "2. Give me a short table: item, where it comes from (my config, a project config, a plugin, a claude.ai connector, " +
+      "or built into the app), what it does in one line, and whether you recommend turning it off.",
+    "3. Wait for my OK. Then make only the changes I approve — prefer disabling over deleting, and back up any file before editing it.",
+    "4. Tell me how to undo each change, and anything that needs a restart to take effect.",
+    "",
+    `Reply in ${finding.replyLanguage}.`,
+  );
+  return lines.join("\n");
 }

@@ -286,6 +286,9 @@
       "hide": "收合",
       "copy": "複製",
       "copied": "已複製",
+      "copyPrompt": "複製給 Claude Code / Codex 的提示詞",
+      "promptCopied": "已複製 — 貼到 Claude Code 或 Codex",
+      "copyPromptHint": "複製一段可交給 AI 編程助手執行的請求：它會找出每個項目的設定位置、說明用途，並只套用你同意的修改。",
       "saves": "每個請求約省下 {{tokens}} token——此期間 {{requests}} 個請求合計約 {{total}}",
       "more": "還有 {{count}} 項",
       "severity": {

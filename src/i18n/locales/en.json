@@ -286,6 +286,9 @@
       "hide": "Hide",
       "copy": "Copy",
       "copied": "Copied",
+      "copyPrompt": "Copy prompt for Claude Code / Codex",
+      "promptCopied": "Prompt copied — paste it into Claude Code or Codex",
+      "copyPromptHint": "Copies a request your coding agent can act on: it finds where each item is configured, explains it, and applies only the changes you approve.",
       "saves": "Saves ≈ {{tokens}} tokens per request — ≈ {{total}} over the {{requests}} requests in this period",
       "more": "+{{count}} more",
       "severity": {
