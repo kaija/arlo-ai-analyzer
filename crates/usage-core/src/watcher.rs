@@ -11,9 +11,14 @@ where
 {
     let (tx, rx) = channel();
     let mut watcher: RecommendedWatcher = notify::recommended_watcher(tx)?;
+    // A root that can't be watched is skipped rather than failing the rest.
+    // A root that doesn't exist yet isn't watched at all; a manual rescan
+    // re-creates the watcher and picks it up.
     for path in paths {
         if path.exists() {
-            watcher.watch(path, RecursiveMode::Recursive)?;
+            if let Err(e) = watcher.watch(path, RecursiveMode::Recursive) {
+                eprintln!("cannot watch {}: {e}", path.display());
+            }
         }
     }
 

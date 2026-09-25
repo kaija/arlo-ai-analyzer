@@ -145,12 +145,34 @@ fn reset_database(state: tauri::State<AppState>, app: AppHandle) -> Result<usize
     Ok(sessions.len())
 }
 
+/// The refresh button: scan every root again and re-arm the watcher.
+///
+/// The watcher can miss things — a root that didn't exist when it started
+/// (Codex creates `sessions/` on first use), or events dropped under load — so
+/// a manual rescan also replaces it. Runs off the main thread: a full scan of
+/// a large history takes long enough to freeze the window.
 #[tauri::command]
-fn rescan(state: tauri::State<AppState>) -> Result<usize, String> {
-    let sessions = usage_core::scan_all(&current_roots(&state)?).map_err(|e| e.to_string())?;
-    let db = state.db.lock().map_err(|e| e.to_string())?;
-    db.upsert_sessions(&sessions).map_err(|e| e.to_string())?;
-    Ok(sessions.len())
+async fn rescan(app: AppHandle) -> Result<usize, String> {
+    let handle = app.clone();
+    let count = tauri::async_runtime::spawn_blocking(move || -> Result<usize, String> {
+        let state = handle.state::<AppState>();
+        let roots = current_roots(&state)?;
+        let sessions = usage_core::scan_all(&roots).map_err(|e| e.to_string())?;
+        state.db.lock().map_err(|e| e.to_string())?.upsert_sessions(&sessions).map_err(|e| e.to_string())?;
+
+        let watcher = start_watcher(&handle, &roots);
+        let mut sources = state.sources.lock().map_err(|e| e.to_string())?;
+        // Only if the roots weren't swapped while this scan ran — the newer
+        // config already has its own watcher.
+        if sources.roots == roots {
+            sources._watcher = watcher;
+        }
+        Ok(sessions.len())
+    })
+    .await
+    .map_err(|e| e.to_string())??;
+    let _ = app.emit("usage-updated", ());
+    Ok(count)
 }
 
 #[tauri::command]

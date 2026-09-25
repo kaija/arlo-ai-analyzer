@@ -53,9 +53,12 @@ impl UsageSource for CodexCliSource {
 
         let mut files = Vec::new();
         collect_jsonl(&self.root, &mut files);
+        // A bad file is skipped, not fatal — see the Claude Code scan.
         for path in files {
-            if let Some(session) = parse_session_file(&path, &mut seen)? {
-                sessions.push(session);
+            match parse_session_file(&path, &mut seen) {
+                Ok(Some(session)) => sessions.push(session),
+                Ok(None) => {}
+                Err(e) => eprintln!("skipping {}: {e:#}", path.display()),
             }
         }
         Ok(sessions)
@@ -138,7 +141,7 @@ fn u64_at(value: &Value, key: &str) -> u64 {
 /// replayed prefix from being billed twice. Pass a fresh set to dedupe within
 /// this file only.
 fn read_transcript(path: &Path, seen: &mut UsageKeys) -> Result<Transcript> {
-    let content = fs::read_to_string(path)?;
+    let content = crate::sources::read_lossy(path)?;
 
     let mut root_sid = String::new();
     let mut project: Option<String> = None;

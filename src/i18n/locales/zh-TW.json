@@ -15,7 +15,9 @@
     "settings": "設定"
   },
   "topbar": {
-    "toggleTheme": "切換主題"
+    "toggleTheme": "切換主題",
+    "rescan": "重新掃描工作階段資料夾",
+    "rescanning": "掃描中…"
   },
   "settings": {
     "language": {

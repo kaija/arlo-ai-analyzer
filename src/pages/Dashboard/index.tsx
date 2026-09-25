@@ -159,7 +159,7 @@ function projectDims(sessions: { project: string }[]): Dimension[] {
 
 export default function DashboardPage() {
   // --- contexts ---
-  const { sessions, loading, scanState } = useSessionsContext();
+  const { sessions, loading, rescanning } = useSessionsContext();
   const { contextAlertThreshold } = useSettingsContext();
   const navigate = useNavigate();
   const plans = usePlanStatus();
@@ -406,9 +406,10 @@ export default function DashboardPage() {
   // Render guard: show scan states
   // ---------------------------------------------------------------------------
 
-  const showEmpty =
-    !loading && scanState !== "scanning" && sessions.length === 0;
-  const showScanning = scanState === "scanning";
+  // A rescan with data already on screen keeps it there (the top bar's button
+  // shows the progress); only a first scan takes over the page.
+  const showEmpty = !loading && !rescanning && sessions.length === 0;
+  const showScanning = rescanning && sessions.length === 0;
 
   // ---------------------------------------------------------------------------
   // Effective dims for the chart (filtered when requests — single dim only)
