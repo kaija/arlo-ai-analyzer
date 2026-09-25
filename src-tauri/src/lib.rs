@@ -121,6 +121,24 @@ fn list_sessions(state: tauri::State<AppState>) -> Result<Vec<Session>, String> 
     db.all_sessions().map_err(|e| e.to_string())
 }
 
+/// Cross-session tool, skill and MCP usage for the Tools page.
+///
+/// Codex rollouts only name the MCP servers that were called, so the ones
+/// configured in `config.toml` (next to the granted `sessions/` folder) are
+/// added — that is how a server that is never used shows up at all.
+#[tauri::command]
+fn get_tool_usage(state: tauri::State<AppState>) -> Result<usage_core::tool_usage::ToolUsageReport, String> {
+    let roots = current_roots(&state)?;
+    let stored = state.db.lock().map_err(|e| e.to_string())?.tool_sessions().map_err(|e| e.to_string())?;
+    let configured = roots
+        .codex_cli
+        .as_deref()
+        .and_then(Path::parent)
+        .map(usage_core::tool_usage::codex_mcp_servers)
+        .unwrap_or_default();
+    Ok(usage_core::tool_usage::report(stored, configured, ToolKind::CodexCli))
+}
+
 #[tauri::command]
 fn get_session_detail(state: tauri::State<AppState>, session_id: String) -> Result<SessionDetail, String> {
     let roots = current_roots(&state)?;
@@ -335,6 +353,7 @@ pub fn run() {
         .on_window_event(tray::on_window_event)
         .invoke_handler(tauri::generate_handler![
             list_sessions,
+            get_tool_usage,
             get_session_detail,
             rescan,
             reset_database,

@@ -327,3 +327,51 @@ export interface PlanReport {
   /** One per installed tool that has a plan provider. */
   tools: PlanStatus[];
 }
+
+// --- Tool usage — mirrors usage_core::tool_usage ---
+
+export type CapabilityKind = "builtin" | "mcp" | "skill" | "subagent";
+
+/** Calls to one capability within one session. */
+export interface CallCount {
+  kind: CapabilityKind;
+  /** Tool name for a built-in, server for MCP, skill or subagent name. */
+  name: string;
+  /** MCP only: which of the server's tools. */
+  tool?: string;
+  calls: number;
+  errors: number;
+}
+
+export interface SessionToolRow {
+  tool: ToolKind;
+  session_id: string;
+  started_at: string;
+  requests: number;
+  /** First request's prompt size; null for resumed sessions and subagents. */
+  baseline_tokens: number | null;
+  calls: CallCount[];
+}
+
+/** One skill / MCP server / subagent across every session that loaded it. */
+export interface ListedStat {
+  tool: ToolKind;
+  kind: CapabilityKind;
+  name: string;
+  /** Tokens it adds to every request; null when the log doesn't show it. */
+  tokens: number | null;
+  /** MCP: tools the server exposes. */
+  tools: number;
+  /** Codex skills: the SKILL.md path `[[skills.config]]` needs. */
+  path: string | null;
+  first_listed: string;
+  last_listed: string;
+  sessions_listed: number;
+  /** Still loaded by the most recent session — i.e. installed now. */
+  current: boolean;
+}
+
+export interface ToolUsageReport {
+  sessions: SessionToolRow[];
+  listed: ListedStat[];
+}

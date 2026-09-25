@@ -6,6 +6,7 @@ pub mod pricing;
 pub mod sample;
 pub mod source;
 pub mod sources;
+pub mod tool_usage;
 pub mod watcher;
 
 pub use db::Db;

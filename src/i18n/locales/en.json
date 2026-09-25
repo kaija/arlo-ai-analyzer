@@ -3,6 +3,7 @@
     "dashboard": "Dashboard",
     "sessions": "Sessions",
     "insights": "Insights",
+    "tools": "Tools",
     "settings": "Settings",
     "expandSidebar": "Expand sidebar",
     "collapseSidebar": "Collapse sidebar"
@@ -12,6 +13,7 @@
     "sessions": "Sessions",
     "sessionDetail": "Session Detail",
     "insights": "Insights",
+    "tools": "Tools & skills",
     "settings": "Settings"
   },
   "topbar": {
@@ -238,6 +240,132 @@
       "unauthorized": "The vendor rejected the saved sign-in. Sign in to the tool again.",
       "rate_limited": "Checked too often — the vendor asked to wait. Trying again later.",
       "failed": "Couldn't get current limits from the vendor."
+    }
+  },
+  "tools": {
+    "loading": "Reading tool usage…",
+    "error": "Couldn't read tool usage: {{error}}",
+    "filter": {
+      "tool": "Coding tool",
+      "range": "Period",
+      "all": "All"
+    },
+    "empty": {
+      "title": "No tool activity in this period",
+      "body": "No {{tool}} session in this period logged a tool call. Try a longer period, or rescan."
+    },
+    "stats": {
+      "starting": "Starting context",
+      "startingSub": "{{pct}}% of a {{window}} window · p90 {{p90}}",
+      "startingInfo": "Prompt size of each session's first request: system prompt, tool definitions, skill list, memory files and your first message. Every session pays it before doing any work.",
+      "loaded": "Loaded on every request",
+      "loadedSub": "{{skills}} skills · {{servers}} MCP servers · {{agents}} subagents",
+      "loadedInfo": "Estimated size of the installed skill descriptions, MCP tool names and instructions, and subagent descriptions (≈ 4 characters per token).",
+      "unused": "Unused in this period",
+      "unusedSub": "≈ {{tokens}} tokens per request",
+      "unusedNone": "Everything installed was used",
+      "calls": "Tool calls",
+      "callsSub": "{{distinct}} tools across {{sessions}} sessions"
+    },
+    "context": {
+      "title": "Where the starting context goes",
+      "median": "Median of {{count}} sessions",
+      "skills": "Skills",
+      "mcp": "MCP servers",
+      "subagents": "Subagents",
+      "rest": "System prompt, built-in tools & memory",
+      "threshold": "{{pct}}% of window",
+      "trend": "Daily median",
+      "noListing": "This version of {{tool}} doesn't log what it loads, so only the total is known.",
+      "noBaseline": "No session in this period started fresh — resumed sessions and subagents carry replayed history."
+    },
+    "recs": {
+      "title": "Recommendations",
+      "none": "Nothing to trim — everything that is loaded is pulling its weight.",
+      "howTo": "How to apply",
+      "hide": "Hide",
+      "copy": "Copy",
+      "copied": "Copied",
+      "saves": "Saves ≈ {{tokens}} tokens per request — ≈ {{total}} over the {{requests}} requests in this period",
+      "more": "+{{count}} more",
+      "severity": {
+        "warning": "Act",
+        "info": "Consider"
+      },
+      "starting_context": {
+        "title": "Sessions start {{pct}}% full",
+        "body": "The median session carries {{median}} tokens before any work — more than a tenth of its {{window}} window. Trim what is always loaded: the unused skills and MCP servers below, and long {{memoryFile}} files."
+      },
+      "skill_budget": {
+        "title": "Skill list over budget",
+        "body": "{{count}} skill descriptions take ≈ {{tokens}} tokens. Codex caps this list at 2% of the window (≈ {{budget}} here) and shortens descriptions past it; Claude Code cuts each one at 1,536 characters."
+      },
+      "unused_skills": {
+        "title": "{{count}} skills never used",
+        "body": "Loaded into every request but never invoked in this period. Turn them off or delete them — they can be reinstalled any time."
+      },
+      "unused_mcp": {
+        "title": "{{count}} MCP servers never used",
+        "body": "No calls in this period, yet their tools are offered to the model on every request. Disable or remove them."
+      },
+      "unused_subagents": {
+        "title": "{{count}} subagents never used",
+        "body": "Their descriptions are in every request's agent list. Delete the ones you don't need."
+      },
+      "tool_count": {
+        "title": "{{tools}} MCP tools loaded",
+        "body": "Anthropic finds tool selection degrades past 30–50 tools, and OpenAI suggests fewer than 20. Claude Code defers MCP tools behind tool search, but each still adds its name and a search step. Disable the ones you don't use."
+      },
+      "rare_skills": {
+        "title": "{{count}} skills rarely used",
+        "body": "Used in fewer than 1 in 20 sessions. Keep them callable by name, but drop their description from every request.",
+        "bodyCodex": "Used in fewer than 1 in 20 sessions. Codex has no name-only mode, so each one costs its description on every request; disable the ones you can re-enable when needed."
+      },
+      "failing_mcp": {
+        "title": "{{count}} MCP servers fail often",
+        "body": "One call in five or more returned an error. Check their configuration or sign-in — a failed call still costs a round trip."
+      }
+    },
+    "table": {
+      "title": "Tool usage across sessions",
+      "kinds": {
+        "all": "All",
+        "builtin": "Built-in",
+        "mcp": "MCP",
+        "skill": "Skills",
+        "subagent": "Subagents"
+      },
+      "count": "{{count}} shown",
+      "name": "Name",
+      "type": "Type",
+      "status": "Status",
+      "calls": "Calls",
+      "sessions": "Sessions",
+      "errors": "Errors",
+      "lastUsed": "Last used",
+      "perRequest": "Per request",
+      "perRequestTitle": "Estimated tokens its description adds to every request",
+      "builtinCost": "Part of the system prompt",
+      "mcpTools": "{{used}}/{{total}} tools used",
+      "mcpToolsUsed": "{{count}} tools used",
+      "removed": "removed"
+    },
+    "tier": {
+      "core": "Core",
+      "regular": "Regular",
+      "rare": "Rare",
+      "unused": "Unused",
+      "new": "New"
+    },
+    "guide": {
+      "title": "Guidelines behind these checks",
+      "toolSearch": "Anthropic: tool-selection accuracy drops past 30–50 tools. Use tool search above 10 tools or 10K tokens of definitions, and keep the 3–5 most-used tools always loaded.",
+      "advancedToolUse": "Anthropic: 58 tools from five MCP servers took ≈ 55K tokens before any work; tool search cut that by about 85%.",
+      "claudeSkills": "Claude Code: every listed skill adds to context on every turn. Descriptions are cut at 1,536 characters; skillOverrides turns a skill off or to name-only.",
+      "codexSkills": "Codex: the skill list is capped at 2% of the context window (8,000 characters when unknown). Disable a skill with [[skills.config]] … enabled = false.",
+      "openaiFunctions": "OpenAI: aim for fewer than 20 functions at the start of a turn (a soft limit).",
+      "codexConfig": "Codex MCP servers: enabled = false parks one; enabled_tools / disabled_tools trims its tools.",
+      "estimate": "Listing sizes are estimates at ≈ 4 characters per token (one per CJK character). The starting context is measured from the logs."
     }
   }
 }

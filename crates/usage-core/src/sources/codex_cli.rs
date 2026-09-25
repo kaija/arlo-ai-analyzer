@@ -1,6 +1,7 @@
 use crate::model::{Session, SessionDetail, SessionRequest, StopReason, ToolKind};
 use crate::pricing::estimate_request_cost;
 use crate::source::UsageSource;
+use crate::tool_usage::{self, CapabilityKind, Collector, SessionTools};
 use anyhow::Result;
 use chrono::{DateTime, Utc};
 use serde_json::Value;
@@ -50,12 +51,14 @@ impl UsageSource for CodexCliSource {
         // path order, which is chronological given the YYYY/MM/DD layout and
         // the timestamp in each filename, so the original always wins.
         let mut seen = UsageKeys::default();
+        // The replayed prefix repeats the parent's tool calls with their ids.
+        let mut seen_calls = CallIds::default();
 
         let mut files = Vec::new();
         collect_jsonl(&self.root, &mut files);
         // A bad file is skipped, not fatal — see the Claude Code scan.
         for path in files {
-            match parse_session_file(&path, &mut seen) {
+            match parse_session_file(&path, &mut seen, &mut seen_calls) {
                 Ok(Some(session)) => sessions.push(session),
                 Ok(None) => {}
                 Err(e) => eprintln!("skipping {}: {e:#}", path.display()),
@@ -92,6 +95,7 @@ pub(crate) fn collect_jsonl(dir: &Path, out: &mut Vec<PathBuf>) {
 /// two unrelated sessions can't collide on equal numbers.
 type UsageKey = (String, u64, u64, u64, u64, u64);
 type UsageKeys = std::collections::HashSet<UsageKey>;
+type CallIds = std::collections::HashSet<String>;
 
 /// One API request, after de-duplication.
 struct Turn {
@@ -129,6 +133,7 @@ struct Transcript {
     project: Option<String>,
     started_at: Option<DateTime<Utc>>,
     turns: Vec<Turn>,
+    tools: SessionTools,
 }
 
 fn u64_at(value: &Value, key: &str) -> u64 {
@@ -139,8 +144,8 @@ fn u64_at(value: &Value, key: &str) -> u64 {
 ///
 /// Keys already present in `seen` are skipped, which is what stops a subagent's
 /// replayed prefix from being billed twice. Pass a fresh set to dedupe within
-/// this file only.
-fn read_transcript(path: &Path, seen: &mut UsageKeys) -> Result<Transcript> {
+/// this file only. `seen_calls` does the same for tool calls.
+fn read_transcript(path: &Path, seen: &mut UsageKeys, seen_calls: &mut CallIds) -> Result<Transcript> {
     let content = crate::sources::read_lossy(path)?;
 
     let mut root_sid = String::new();
@@ -149,6 +154,13 @@ fn read_transcript(path: &Path, seen: &mut UsageKeys) -> Result<Transcript> {
     let mut model = String::new();
     let mut effort: Option<String> = None;
     let mut turns: Vec<Turn> = Vec::new();
+    let mut tools = Collector::default();
+    // Newer rollouts log every tool call as a typed `item_completed`, calls
+    // made from inside `exec` code included; the raw `function_call` records
+    // are only read when a file has none.
+    let mut has_items = false;
+    let mut raw_calls: Vec<(Option<String>, String, String)> = Vec::new();
+    let mut replayed = false;
 
     for (line_no, line) in content.lines().enumerate() {
         let line = line.trim();
@@ -194,7 +206,33 @@ fn read_transcript(path: &Path, seen: &mut UsageKeys) -> Result<Transcript> {
                     project = payload.get("cwd").and_then(|v| v.as_str()).map(str::to_string);
                 }
             }
+            "response_item" => match payload.get("type").and_then(|v| v.as_str()).unwrap_or_default() {
+                "message" if payload.get("role").and_then(|v| v.as_str()) == Some("developer") => {
+                    for part in payload.get("content").and_then(|c| c.as_array()).into_iter().flatten() {
+                        if let Some(text) = part.get("text").and_then(|v| v.as_str()) {
+                            tool_usage::codex_skill_listing(&mut tools, text);
+                        }
+                    }
+                }
+                kind @ ("function_call" | "custom_tool_call" | "local_shell_call" | "web_search_call" | "tool_search_call") => {
+                    let name = match kind {
+                        "local_shell_call" => "shell",
+                        "web_search_call" => "web_search",
+                        "tool_search_call" => "tool_search",
+                        _ => payload.get("name").and_then(|v| v.as_str()).unwrap_or_default(),
+                    };
+                    let id = payload.get("call_id").and_then(|v| v.as_str()).map(str::to_string);
+                    raw_calls.push((id, name.to_string(), payload.to_string()));
+                }
+                _ => {}
+            },
             "event_msg" => match payload.get("type").and_then(|v| v.as_str()) {
+                Some("item_completed") => {
+                    has_items = true;
+                    if let Some(item) = payload.get("item") {
+                        record_item(item, seen_calls, &mut tools);
+                    }
+                }
                 // Closes a turn: its last request is the one that answered the
                 // user, everything before it went back out to a tool.
                 Some("task_complete") => {
@@ -221,6 +259,7 @@ fn read_transcript(path: &Path, seen: &mut UsageKeys) -> Result<Transcript> {
                         u64_at(last, "cached_input_tokens"),
                     );
                     if !seen.insert(key) {
+                        replayed |= turns.is_empty();
                         continue;
                     }
 
@@ -245,7 +284,68 @@ fn read_transcript(path: &Path, seen: &mut UsageKeys) -> Result<Transcript> {
         }
     }
 
-    Ok(Transcript { project, started_at, turns })
+    if !has_items {
+        for (id, name, text) in raw_calls {
+            if id.as_ref().is_some_and(|id| !seen_calls.insert(id.clone())) {
+                continue;
+            }
+            if !name.is_empty() {
+                tools.call_named(&name, None, false);
+            }
+            tools.skill_read(&text);
+        }
+    }
+
+    // A subagent's first request carries its parent's replayed history.
+    let baseline = if replayed { None } else { turns.first().map(Turn::context_tokens) };
+    Ok(Transcript { project, started_at, turns, tools: tools.finish(baseline) })
+}
+
+/// One `item_completed` tool item. Messages and reasoning are not calls.
+fn record_item(item: &Value, seen_calls: &mut CallIds, tools: &mut Collector) {
+    let kind = item.get("type").and_then(|v| v.as_str()).unwrap_or_default();
+    if kind.is_empty()
+        || kind.ends_with("Message")
+        || matches!(kind, "Reasoning" | "SubAgentActivity" | "ContextCompaction")
+    {
+        return;
+    }
+    if let Some(id) = item.get("id").and_then(|v| v.as_str()) {
+        if !seen_calls.insert(id.to_string()) {
+            return;
+        }
+    }
+    let failed = item.get("status").and_then(|v| v.as_str()) == Some("failed");
+    let text = |key: &str| item.get(key).and_then(|v| v.as_str()).unwrap_or_default();
+    let name = match kind {
+        "McpToolCall" => {
+            let i = tools.call(CapabilityKind::Mcp, text("server"), Some(text("tool")), None);
+            if failed {
+                tools.error_at(i);
+            }
+            return;
+        }
+        "CommandExecution" => {
+            if let Some(command) = item.get("command") {
+                tools.skill_read(&command.to_string());
+            }
+            "shell"
+        }
+        "FileChange" => "apply_patch",
+        "ImageView" => "view_image",
+        "WebSearch" => "web_search",
+        "Extension" => match text("kind") {
+            "" => "extension",
+            "web.search" => "web_search",
+            other => other,
+        },
+        "CollabAgentToolCall" => match text("tool") {
+            "" => "agent",
+            tool => tool,
+        },
+        other => other,
+    };
+    tools.call_named(name, None, failed);
 }
 
 /// The thread's own uuid, which is the tail of the rollout filename
@@ -259,8 +359,8 @@ fn session_id_from_path(path: &Path) -> String {
     }
 }
 
-fn parse_session_file(path: &Path, seen: &mut UsageKeys) -> Result<Option<Session>> {
-    let transcript = read_transcript(path, seen)?;
+fn parse_session_file(path: &Path, seen: &mut UsageKeys, seen_calls: &mut CallIds) -> Result<Option<Session>> {
+    let transcript = read_transcript(path, seen, seen_calls)?;
     if transcript.turns.is_empty() {
         return Ok(None);
     }
@@ -285,6 +385,7 @@ fn parse_session_file(path: &Path, seen: &mut UsageKeys) -> Result<Option<Sessio
         compaction_count: 0,
         message_count: transcript.turns.len() as u32,
         cost_usd: 0.0,
+        tools: transcript.tools,
     };
 
     for t in &transcript.turns {
@@ -318,7 +419,7 @@ pub fn get_session_detail(root: &Path, session_id: &str) -> Result<SessionDetail
         return Ok(empty_detail());
     };
 
-    let transcript = read_transcript(&path, &mut UsageKeys::default())?;
+    let transcript = read_transcript(&path, &mut UsageKeys::default(), &mut CallIds::default())?;
     let requests = transcript
         .turns
         .iter()
@@ -354,6 +455,7 @@ fn empty_detail() -> SessionDetail {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::tool_usage::CapabilityKind;
     use std::io::Write;
 
     /// `token_count` line: `total` is the running cumulative counter, `last`
@@ -531,6 +633,64 @@ mod tests {
         assert!(CodexCliSource::with_root(dir.path().to_path_buf()).scan().unwrap().is_empty());
     }
 
+    fn item(json: &str) -> String {
+        format!(r#"{{"timestamp":"2026-08-18T06:55:30.000Z","type":"event_msg","payload":{{"type":"item_completed","item":{json}}}}}"#)
+    }
+
+    #[test]
+    fn typed_items_become_calls_and_skills_are_matched_by_their_file() {
+        let dir = tempfile::tempdir().unwrap();
+        let developer = r#"{"timestamp":"2026-08-18T06:55:25.100Z","type":"response_item","payload":{"type":"message","role":"developer","content":[{"type":"input_text","text":"<skills_instructions>\n- research: Look things up. (file: /h/.agents/skills/research/SKILL.md)\n- imagegen: Images. (file: /h/.codex/skills/imagegen/SKILL.md)\n</skills_instructions>"}]}}"#;
+        write_rollout(
+            &dir.path().join("2026/08/18"),
+            &format!("rollout-2026-08-18T14-55-11-{SID_A}"),
+            &[
+                meta("2026-08-18T06:55:25.005Z", SID_A, "/Users/test/proj"),
+                developer.to_string(),
+                turn_context("gpt-5.6-terra", "medium"),
+                // The code-mode wrapper; its inner calls arrive as items.
+                r#"{"timestamp":"2026-08-18T06:55:29.000Z","type":"response_item","payload":{"type":"custom_tool_call","call_id":"c1","name":"exec","input":"tools.exec_command({})"}}"#.to_string(),
+                item(r#"{"type":"CommandExecution","id":"e1","command":["/bin/bash","-lc","sed -n 1,200p /h/.agents/skills/research/SKILL.md"],"status":"completed"}"#),
+                item(r#"{"type":"McpToolCall","id":"e2","server":"memory","tool":"search","status":"failed"}"#),
+                item(r#"{"type":"McpToolCall","id":"e3","server":"memory","tool":"search","status":"completed"}"#),
+                item(r#"{"type":"AgentMessage","id":"e4"}"#),
+                token_count("2026-08-18T06:55:37.745Z", 21_000, 40, 21_000, 0, 0, 40),
+            ],
+        );
+
+        let s = &CodexCliSource::with_root(dir.path().to_path_buf()).scan().unwrap()[0];
+        let get = |kind: CapabilityKind, name: &str| s.tools.calls.iter().find(|c| c.kind == kind && c.name == name).cloned();
+        assert_eq!(get(CapabilityKind::Builtin, "shell").unwrap().calls, 1);
+        let memory = get(CapabilityKind::Mcp, "memory").unwrap();
+        assert_eq!((memory.calls, memory.errors), (2, 1));
+        assert_eq!(get(CapabilityKind::Skill, "research").unwrap().calls, 1);
+        assert!(get(CapabilityKind::Skill, "imagegen").is_none());
+        assert!(get(CapabilityKind::Builtin, "exec").is_none(), "wrapper not counted when items exist");
+        assert_eq!(s.tools.calls.len(), 3);
+        assert_eq!(s.tools.baseline_tokens, Some(21_000));
+        assert_eq!(s.tools.listed.as_ref().unwrap().len(), 2);
+    }
+
+    #[test]
+    fn older_rollouts_fall_back_to_raw_function_calls() {
+        let dir = tempfile::tempdir().unwrap();
+        write_rollout(
+            &dir.path().join("2026/08/18"),
+            &format!("rollout-2026-08-18T14-55-11-{SID_A}"),
+            &[
+                meta("2026-08-18T06:55:25.005Z", SID_A, "/Users/test/proj"),
+                turn_context("gpt-5.6-terra", "medium"),
+                r#"{"timestamp":"2026-08-18T06:55:29.000Z","type":"response_item","payload":{"type":"function_call","call_id":"c1","name":"shell","arguments":"{}"}}"#.to_string(),
+                r#"{"timestamp":"2026-08-18T06:55:29.000Z","type":"response_item","payload":{"type":"function_call","call_id":"c2","name":"mcp__github__list_prs","arguments":"{}"}}"#.to_string(),
+                token_count("2026-08-18T06:55:37.745Z", 1000, 40, 1000, 0, 0, 40),
+            ],
+        );
+        let s = &CodexCliSource::with_root(dir.path().to_path_buf()).scan().unwrap()[0];
+        let kinds: Vec<(CapabilityKind, &str)> = s.tools.calls.iter().map(|c| (c.kind, c.name.as_str())).collect();
+        assert_eq!(kinds, [(CapabilityKind::Builtin, "shell"), (CapabilityKind::Mcp, "github")]);
+        assert!(s.tools.listed.is_none(), "no skills block: unknown, not empty");
+    }
+
     /// `task_complete` closes a turn: its last request answered the user, the
     /// ones before it went back out to a tool.
     #[test]
@@ -548,7 +708,7 @@ mod tests {
             ],
         );
 
-        let transcript = read_transcript(&path, &mut UsageKeys::default()).unwrap();
+        let transcript = read_transcript(&path, &mut UsageKeys::default(), &mut CallIds::default()).unwrap();
         assert!(matches!(transcript.turns[0].stop_reason, StopReason::ToolUse));
         assert!(matches!(transcript.turns[1].stop_reason, StopReason::EndTurn));
         assert_eq!(transcript.turns[1].effort.as_deref(), Some("high"));

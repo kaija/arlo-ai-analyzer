@@ -36,7 +36,7 @@ with vitest globals. A type error in a test only shows up in the second pass.
 **`crates/usage-core`** — all logic, no Tauri dependency, unit-testable alone.
 `UsageSource` trait (`tool()`, `scan() -> Vec<Session>`); `scan_all()` runs every source.
 
-**`src-tauri`** — thin. Data commands (plus the tray's, below): `list_sessions`, `get_session_detail`, `rescan`,
+**`src-tauri`** — thin. Data commands (plus the tray's, below): `list_sessions`, `get_tool_usage`, `get_session_detail`, `rescan`,
 `reset_database`, and the folder-access ones `get_data_access`, `grant_source_access`,
 `clear_source_access`, `set_sample_data`, and the plan ones `get_plan_status`, `refresh_plan_status`,
 `set_plan_online_enabled`. On setup it resolves the log roots, scans, upserts, and
@@ -70,6 +70,30 @@ the real roots, even in sample mode. `PlanService` re-detects every 5 min, after
 Emits `plan-status-updated`; `usePlanStatus` (`src/hooks/`) is the front-end side. The dashboard
 card and the popover list `planTools()`: subscriptions, plus any tool with an `issue`, so a sign-in
 that couldn't be read is explained rather than silently missing.
+
+### Tool usage (`usage_core::tool_usage`, `src/pages/Tools/`)
+
+Which built-in tools, skills, MCP servers and subagents each session **loaded** and **called**. The
+parsers feed a `Collector` in the same pass as the usage; the result is `Session.tools`
+(`#[serde(skip)]`, so `list_sessions` stays light), cached as the `tools_json` column and read back
+only by `Db::tool_sessions` → `get_tool_usage`, which folds the listings across sessions
+(`ListedStat.current` = in the newest session's listing) and leaves calls per session so the page
+can window them. Analysis, tiers and recommendations are front-end (`src/lib/tool-usage.ts`).
+
+- Claude Code: `tool_use` blocks, deduped by `toolu_` id across files like requests (`Skill` and
+  `Agent` count as the skill / `subagent_type`, not as tools); `tool_result.is_error`; slash
+  commands only when they name a listed skill. Listings come from `skill_listing`,
+  `deferred_tools_delta` (MCP tools, names only), `mcp_instructions_delta` (server names normalised
+  like the `mcp__` prefix: `claude.ai Gmail` → `claude_ai_Gmail`) and `agent_listing_delta`.
+  Eagerly loaded MCP servers never appear in a listing — only skills and subagents can be "removed".
+- Codex: typed `item_completed` items (they include calls made inside `exec` code mode); raw
+  `function_call` records only when a file has none. Skills come from the developer message's
+  `<skills_instructions>` — newer versions shorten paths to `r2/…` with a roots table, expanded
+  here — and count as used when a call's payload contains the skill's `SKILL.md` path. MCP servers
+  that were never called are only visible in `config.toml` (`codex_mcp_servers`, a line scanner).
+- `baseline_tokens` = first request's prompt on the session's main model; `None` when the file opens
+  with replayed requests (resumed session, subagent).
+- Listing sizes are estimates (ASCII/4 + one per non-ASCII char). `null` tokens = unknown.
 
 ### Sandbox and folder access (App Store build)
 
@@ -117,7 +141,8 @@ plus a 500 ms-debounced re-fetch on `usage-updated`. Providers nest Settings →
 `~/…/app_data_dir/usage.sqlite3` (and `usage-sample.sqlite3`) is a pure cache of the transcripts. Schema changes are handled by
 bumping `SCHEMA_VERSION` in [db.rs](crates/usage-core/src/db.rs) — the table is dropped and refilled,
 never `ALTER TABLE`d. Adding a `Session` field means: struct + schema + `SCHEMA_VERSION` + INSERT +
-UPDATE + SELECT (all in `db.rs`) + `src/types.ts`. `upsert_sessions` never deletes, so rows for
+UPDATE + SELECT (all in `db.rs`) + `src/types.ts`. (`Session.tools` is the exception: one JSON
+column, written by the upsert but read only by `tool_sessions`.) `upsert_sessions` never deletes, so rows for
 deleted transcripts only go away via `reset_database`.
 
 ### Codex rollout parsing gotchas (codex_cli.rs)

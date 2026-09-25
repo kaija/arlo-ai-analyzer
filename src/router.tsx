@@ -4,6 +4,7 @@ import DashboardPage from "./pages/Dashboard";
 import SessionsPage from "./pages/Sessions";
 import SessionDetailPage from "./pages/SessionDetail";
 import InsightsPage from "./pages/Insights";
+import ToolsPage from "./pages/Tools";
 import SettingsPage from "./pages/Settings";
 
 export function AppRouter() {
@@ -15,6 +16,7 @@ export function AppRouter() {
           <Route path="/sessions" element={<SessionsPage />} />
           <Route path="/sessions/:id" element={<SessionDetailPage />} />
           <Route path="/insights" element={<InsightsPage />} />
+          <Route path="/tools" element={<ToolsPage />} />
           <Route path="/settings" element={<SettingsPage />} />
         </Route>
       </Routes>

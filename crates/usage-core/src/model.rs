@@ -1,8 +1,9 @@
+use crate::tool_usage::SessionTools;
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use std::str::FromStr;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum ToolKind {
     ClaudeCode,
@@ -69,6 +70,11 @@ pub struct Session {
     /// per-request cost accumulation.
     #[serde(default)]
     pub cost_usd: f64,
+    /// What the session had loaded and what it called. Cached with the row
+    /// but not sent with the session list — the Tools page reads it through
+    /// its own command, aggregated.
+    #[serde(skip)]
+    pub tools: SessionTools,
 }
 
 impl Session {

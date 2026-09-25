@@ -8,6 +8,8 @@ Arlo AI Analyzer is a local-first macOS application. The developer does not coll
 
 With read-only permission, Arlo AI Analyzer reads session logs created by supported tools, including Claude Code and Codex CLI. It uses this information locally to calculate and display statistics such as token and request counts, model and project metadata, context usage, and estimated costs.
 
+The same logs record which tools, skills, MCP servers and subagents each session loaded and called; the app counts these to show which are used and which are not. For Codex CLI it also reads the MCP server names (and whether each is enabled) from `~/.codex/config.toml`, which is only listed, never changed.
+
 Derived analytics are stored in a local SQLite database on your Mac. Arlo AI Analyzer does not transmit session logs or derived analytics to the developer or third parties.
 
 ## Subscription Plan and Limits
