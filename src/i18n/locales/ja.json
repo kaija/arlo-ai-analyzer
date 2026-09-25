@@ -165,5 +165,76 @@
     "chooseFolder": "フォルダを選択…",
     "hint": "macOS がフォルダごとに確認を求めます。正しい場所で開くので、「開く」をクリックするだけです。",
     "noneFound": "この Mac で Claude Code または Codex CLI のログが見つかりませんでした。別の場所に保存している場合はフォルダを選択するか、サンプルデータで試してください。"
+  },
+  "plans": {
+    "card": {
+      "title": "プランの使用状況",
+      "subtitle": "各サブスクリプションの現在の上限をどれだけ使ったか。",
+      "refresh": "更新",
+      "refreshing": "更新中…",
+      "noQuota": "上限の記録はまだありません — 次のリクエスト後に表示されます。",
+      "turnOnLive": "設定でオンライン確認をオンにすると、これらの上限を表示できます。",
+      "openSettings": "設定を開く"
+    },
+    "settings": {
+      "title": "プランと上限",
+      "subtitle": "この Mac にある各ツール自身のサインイン情報から読み取ります。オンライン確認をオンにしない限り、何も送信されません。",
+      "none": "この Mac に Claude Code または Codex CLI が見つかりません。",
+      "planUnknown": "プラン不明",
+      "refreshNow": "今すぐ更新",
+      "refreshing": "更新中…",
+      "online": {
+        "label": "プランの上限をオンラインで確認",
+        "hint": "ツール自身のサインイン情報で Anthropic または OpenAI に現在の使用量を問い合わせます — ツールの /usage や /status と同じリクエストです。各トークンはそのツールのベンダーにのみ送られ、このアプリが更新・保存することはありません。Codex の上限は、これをオンにしなくてもログから読み取ります。",
+        "off": "オフ — この Mac にある情報のみ表示",
+        "checked": "最終確認：{{ago}}",
+        "notYet": "まだ確認していません"
+      }
+    },
+    "auth": {
+      "subscription": "サブスクリプション",
+      "api_key": "API キー",
+      "signed_out": "サインアウト"
+    },
+    "source": {
+      "file": "{{path}} から読み取り",
+      "keychain": "macOS キーチェーンから読み取り",
+      "logs": "プランはツールのログから読み取り"
+    },
+    "origin": {
+      "live": "ライブ · {{ago}}",
+      "logs": "ログから · {{ago}}"
+    },
+    "window": {
+      "hours": "{{count}} 時間の上限",
+      "daily": "1 日の上限",
+      "days": "{{count}} 日間の上限",
+      "weekly": "週間の上限",
+      "minutes": "{{count}} 分の上限",
+      "extraUsage": "今月の追加使用量",
+      "other": "その他の上限",
+      "scoped": "{{window}} · {{scope}}"
+    },
+    "resetsIn": "{{time}}後にリセット",
+    "duration": {
+      "dh": "{{d}}日{{h}}時間",
+      "hm": "{{h}}時間{{m}}分",
+      "m": "{{m}}分",
+      "lessThanMinute": "1 分未満"
+    },
+    "ago": {
+      "justNow": "たった今",
+      "minutes": "{{count}} 分前",
+      "hours": "{{count}} 時間前",
+      "days": "{{count}} 日前"
+    },
+    "issue": {
+      "credentials_unreadable": "このツールのサインイン情報を読み取れませんでした。キーチェーンに拒否されたか、App Store 版では「ログディレクトリ」で選んだフォルダに含まれていない可能性があります（~/.claude または ~/.codex 自体を選んでください）。",
+      "sign_in_expired": "保存されたサインインの有効期限が切れています。ツールを一度実行すると更新されます。",
+      "no_usage_access": "このサインインは長期トークンのため、プランの上限を取得できません。/login でサインインすると表示されます。",
+      "unauthorized": "ベンダーが保存されたサインインを拒否しました。ツールに再度サインインしてください。",
+      "rate_limited": "確認の頻度が高すぎるため、ベンダーから待機を求められました。後で再試行します。",
+      "failed": "ベンダーから現在の上限を取得できませんでした。"
+    }
   }
 }

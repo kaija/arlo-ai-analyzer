@@ -165,5 +165,76 @@
     "chooseFolder": "選擇資料夾…",
     "hint": "macOS 會請你確認每個資料夾。視窗會直接開在正確的位置，按「打開」即可。",
     "noneFound": "在這台 Mac 上找不到 Claude Code 或 Codex CLI 的紀錄。若你把紀錄放在其他位置，請選擇資料夾，或先用範例資料看看。"
+  },
+  "plans": {
+    "card": {
+      "title": "方案用量",
+      "subtitle": "各訂閱方案目前額度的使用情形。",
+      "refresh": "重新整理",
+      "refreshing": "重新整理中…",
+      "noQuota": "尚無額度紀錄 — 下一次請求後就會出現。",
+      "turnOnLive": "在「設定」中開啟線上檢查即可查看這些額度。",
+      "openSettings": "開啟設定"
+    },
+    "settings": {
+      "title": "方案與額度",
+      "subtitle": "讀取本機上各工具自己的登入資訊。除非開啟線上檢查，否則不會傳送任何資料。",
+      "none": "這台 Mac 上找不到 Claude Code 或 Codex CLI。",
+      "planUnknown": "方案不明",
+      "refreshNow": "立即重新整理",
+      "refreshing": "重新整理中…",
+      "online": {
+        "label": "線上檢查方案額度",
+        "hint": "使用工具本身的登入資訊向 Anthropic 或 OpenAI 查詢目前用量 — 與工具的 /usage 或 /status 發出的請求相同。每個權杖只會傳給該工具的供應商，本 App 不會更新或儲存它。即使不開啟，Codex 的額度也會從其紀錄讀取。",
+        "off": "已關閉 — 只顯示本機上的資訊",
+        "checked": "上次檢查：{{ago}}",
+        "notYet": "尚未檢查"
+      }
+    },
+    "auth": {
+      "subscription": "訂閱",
+      "api_key": "API 金鑰",
+      "signed_out": "未登入"
+    },
+    "source": {
+      "file": "讀取自 {{path}}",
+      "keychain": "讀取自 macOS 鑰匙圈",
+      "logs": "方案讀取自工具的紀錄"
+    },
+    "origin": {
+      "live": "即時 · {{ago}}",
+      "logs": "來自紀錄 · {{ago}}"
+    },
+    "window": {
+      "hours": "{{count}} 小時額度",
+      "daily": "每日額度",
+      "days": "{{count}} 天額度",
+      "weekly": "每週額度",
+      "minutes": "{{count}} 分鐘額度",
+      "extraUsage": "本月額外用量",
+      "other": "其他額度",
+      "scoped": "{{window}} · {{scope}}"
+    },
+    "resetsIn": "{{time}}後重置",
+    "duration": {
+      "dh": "{{d}} 天 {{h}} 小時",
+      "hm": "{{h}} 小時 {{m}} 分",
+      "m": "{{m}} 分鐘",
+      "lessThanMinute": "不到一分鐘"
+    },
+    "ago": {
+      "justNow": "剛剛",
+      "minutes": "{{count}} 分鐘前",
+      "hours": "{{count}} 小時前",
+      "days": "{{count}} 天前"
+    },
+    "issue": {
+      "credentials_unreadable": "無法讀取此工具的登入資訊。可能是鑰匙圈拒絕存取，或在 App Store 版本中，「紀錄目錄」所選的資料夾未包含它（請直接選擇 ~/.claude 或 ~/.codex）。",
+      "sign_in_expired": "已儲存的登入已過期。執行一次該工具即可更新。",
+      "no_usage_access": "此登入為長效權杖，無法回報方案額度。請用 /login 登入後即可查看。",
+      "unauthorized": "供應商拒絕了已儲存的登入。請重新登入該工具。",
+      "rate_limited": "檢查太頻繁，供應商要求稍候。稍後會再試一次。",
+      "failed": "無法從供應商取得目前額度。"
+    }
   }
 }

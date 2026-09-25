@@ -261,3 +261,69 @@ export interface DataAccess {
   sandboxed: boolean;
   sources: SourceAccess[];
 }
+
+// --- Plan / quota — mirrors usage_core::plan and PlanReport in src-tauri/src/plans.rs ---
+
+/** How a tool is signed in. Only a subscription has plan limits. */
+export type AuthKind = "subscription" | "api_key" | "signed_out";
+
+export type CredentialSource =
+  | { kind: "file"; path: string }
+  | { kind: "keychain" }
+  /** No readable sign-in; the plan was read from the tool's own logs. */
+  | { kind: "logs" };
+
+export type QuotaOrigin = "logs" | "live";
+
+export interface QuotaWindow {
+  /** The vendor's name for the window ("five_hour", "primary", …). */
+  id: string;
+  /** 300 → 5-hour, 10080 → weekly; null when not time-boxed (monthly extra usage). */
+  window_minutes: number | null;
+  /** Model family or feature the window is limited to; null for the plan's overall limit. */
+  scope: string | null;
+  /** 0–100. */
+  used_percent: number;
+  /** null when unknown, or when the window has reset since it was observed. */
+  resets_at: string | null;
+}
+
+export interface QuotaSnapshot {
+  origin: QuotaOrigin;
+  /** When the numbers were true: the fetch time, or the log record's. */
+  observed_at: string;
+  windows: QuotaWindow[];
+}
+
+export type PlanIssue =
+  | {
+      kind:
+        | "credentials_unreadable"
+        | "sign_in_expired"
+        | "no_usage_access"
+        | "unauthorized"
+        | "rate_limited";
+    }
+  | { kind: "failed"; detail: string };
+
+export interface PlanStatus {
+  tool: ToolKind;
+  auth: AuthKind;
+  /** Plan name as the vendor shows it ("Max 20x", "Plus"). */
+  plan: string | null;
+  account: string | null;
+  organization: string | null;
+  credential_source: CredentialSource | null;
+  quota: QuotaSnapshot | null;
+  issue: PlanIssue | null;
+}
+
+export interface PlanReport {
+  /** Live checks with the tools' own sign-in are on. */
+  online: boolean;
+  /** null until the first background pass finishes. */
+  checked_at: string | null;
+  live_checked_at: string | null;
+  /** One per installed tool that has a plan provider. */
+  tools: PlanStatus[];
+}

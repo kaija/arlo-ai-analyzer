@@ -4,6 +4,18 @@ All notable changes to Arlo AI Analyzer are documented here.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the project uses
 [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Added
+
+- **Plans and limits.** The app now recognises which subscription each tool is signed in with
+  (Claude Pro / Max 5x / Max 20x / Team / Enterprise, ChatGPT Plus / Pro / Business …) from the
+  tool's own saved sign-in, and shows how much of each usage limit — 5-hour, weekly, per-model
+  weekly, extra usage — is used and when it resets, on the Dashboard and under Settings → Plans &
+  limits. Codex limits are read from its own logs, with no network. Turning on "Check plan limits
+  online" asks Anthropic or OpenAI for current numbers with the tool's own sign-in (off by default;
+  the sign-in is never renewed or stored by the app).
+
 ## [1.0.1] - 2026-09-23
 
 ### Added

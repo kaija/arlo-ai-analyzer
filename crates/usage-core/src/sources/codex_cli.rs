@@ -63,7 +63,7 @@ impl UsageSource for CodexCliSource {
 }
 
 /// Depth-first walk collecting `*.jsonl`, sorted at every level.
-fn collect_jsonl(dir: &Path, out: &mut Vec<PathBuf>) {
+pub(crate) fn collect_jsonl(dir: &Path, out: &mut Vec<PathBuf>) {
     let Ok(entries) = fs::read_dir(dir) else {
         return;
     };
