@@ -6,6 +6,8 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
+## [1.0.3] - 2026-09-26
+
 ### Added
 
 - **Tools page.** Shows, across sessions, which built-in tools, skills, MCP servers and subagents
@@ -16,6 +18,20 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
   30–50 tools; OpenAI: fewer than 20 functions; Codex: skill list capped at 2% of the window), with
   the `skillOverrides`, `claude mcp remove` or `config.toml` change ready to copy. Something
   installed in the last 7 days is never called unused.
+- **Copy prompt** on each Tools recommendation: a ready-to-paste request for Claude Code or Codex
+  that finds where each flagged item is configured and applies only the changes you approve.
+
+### Changed
+
+- The MCP fix snippet no longer suggests `claude mcp remove` for claude.ai connectors or Claude
+  desktop app features, which it can't remove.
+- Built-in OpenRouter price snapshot refreshed (455 → 452 models).
+
+### Fixed
+
+- Plan-limit meters below 50% are shown in green instead of a nearly invisible grey.
+- Dismissed context-window alerts on the Dashboard stay dismissed; one comes back only for a
+  session that crosses the threshold later.
 
 ## [1.0.2] - 2026-09-25
 
@@ -82,6 +98,7 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 First App Store release: token and cost reports for Claude Code and Codex CLI, read from local logs,
 with a dashboard, session details, charts, and English / 繁體中文 / 日本語 UI.
 
+[1.0.3]: https://github.com/kaija/arlo-ai-analyzer/compare/v1.0.2...v1.0.3
 [1.0.2]: https://github.com/kaija/arlo-ai-analyzer/compare/v1.0.1...v1.0.2
 [1.0.1]: https://github.com/kaija/arlo-ai-analyzer/compare/0a3daf5...v1.0.1
 [1.0.0]: https://github.com/kaija/arlo-ai-analyzer/commit/0a3daf5
