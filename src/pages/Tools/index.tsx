@@ -1,8 +1,10 @@
 import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { invoke } from "@tauri-apps/api/core";
 import { useSessionsContext } from "../../context/SessionsContext";
 import { useToolUsage } from "../../hooks/useToolUsage";
 import { analyzeToolUsage } from "../../lib/tool-usage";
+import { estimateInputSavingsRate } from "../../lib/savings-estimate";
 import { contextWindow } from "../../pricing";
 import { SegmentedControl } from "../../primitives/SegmentedControl";
 import { TOOL_LABELS, type ToolKind } from "../../types";
@@ -28,7 +30,20 @@ export default function ToolsPage() {
   const { sessions, access } = useSessionsContext();
   const [tool, setTool] = useState<ToolKind>("claude_code");
   const [range, setRange] = useState<Range>("30d");
+  const [claudeCliAvailable, setClaudeCliAvailable] = useState(false);
   const days = RANGE_DAYS[range];
+
+  useEffect(() => {
+    if (!access || access.sample || access.sandboxed) {
+      setClaudeCliAvailable(false);
+      return;
+    }
+    let active = true;
+    void invoke<boolean>("claude_cli_available")
+      .then((available) => { if (active) setClaudeCliAvailable(available); })
+      .catch(() => { if (active) setClaudeCliAvailable(false); });
+    return () => { active = false; };
+  }, [access]);
 
   // Only offer the CLIs there is data for; land on one that has some.
   const available = useMemo(
@@ -56,6 +71,16 @@ export default function ToolsPage() {
     () => (report ? analyzeToolUsage(report, tool, { now: new Date(), days, contextWindow: window }) : null),
     [report, tool, days, window],
   );
+  const savingsRate = useMemo(
+    () => estimateInputSavingsRate(sessions, tool, days, new Date()),
+    [sessions, tool, days],
+  );
+  const projects = useMemo(() => [...new Set(
+    [...sessions]
+      .filter((session) => session.tool === tool && session.project)
+      .sort((a, b) => b.started_at.localeCompare(a.started_at))
+      .map((session) => session.project),
+  )], [sessions, tool]);
 
   const toolOptions = (available.length > 0 ? available : TOOLS).map((k) => ({ value: k, label: TOOL_LABELS[k] }));
   const rangeOptions = (Object.keys(RANGE_DAYS) as Range[]).map((r) => ({
@@ -87,7 +112,7 @@ export default function ToolsPage() {
             <ToolStatTiles analysis={analysis} />
             <div className="tools-grid">
               <StartingContextCard analysis={analysis} />
-              <RecommendationsCard analysis={analysis} />
+              <RecommendationsCard analysis={analysis} savingsRate={savingsRate} claudeCliAvailable={claudeCliAvailable} projects={projects} />
             </div>
             <ToolUsageTable analysis={analysis} />
             <GuidelinesCard />

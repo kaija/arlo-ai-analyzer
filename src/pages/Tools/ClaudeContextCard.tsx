@@ -102,10 +102,10 @@ export function ClaudeContextCard({ sessions, sandboxed }: { sessions: Session[]
                 </div>
                 <div className="claude-context-sections">
                   {snapshot.sections.map((section) => (
-                    <details key={section.title} open={section.title === "Estimated usage by category"}>
+                    <details key={section.title} open>
                       <summary>{label(section.title)} <span className="tnum">({section.rows.length})</span></summary>
                       <div className="table-scroll-x claude-context-table-scroll">
-                        <table className="dtable">
+                        <table className={`dtable${section.title === "Memory Files" ? " claude-memory-table" : ""}`}>
                           <thead><tr>{section.columns.map((column) => <th key={column}>{label(column)}</th>)}</tr></thead>
                           <tbody>{section.rows.map((row, index) => (
                             <tr key={`${row[0]}:${index}`}>{row.map((cell, cellIndex) => <td key={cellIndex}>{cell}</td>)}</tr>
@@ -117,10 +117,12 @@ export function ClaudeContextCard({ sessions, sandboxed }: { sessions: Session[]
                 </div>
               </>
             ) : <p className="claude-context-note">{t("tools.live.formatChanged")}</p>}
-            <details className="claude-context-raw" open={!snapshot.structured}>
-              <summary>{t("tools.live.originalOutput")}</summary>
-              <pre>{snapshot.raw}</pre>
-            </details>
+            {!snapshot.structured && (
+              <details className="claude-context-raw" open>
+                <summary>{t("tools.live.originalOutput")}</summary>
+                <pre>{snapshot.raw}</pre>
+              </details>
+            )}
             <p className="claude-context-note">{t("tools.live.estimateNote")}</p>
           </>
         )}

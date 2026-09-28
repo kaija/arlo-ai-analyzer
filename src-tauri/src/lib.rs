@@ -2,6 +2,7 @@ mod access;
 mod bookmark;
 mod catalog;
 mod claude_context;
+mod claude_launch;
 mod plans;
 mod tray;
 
@@ -157,6 +158,32 @@ async fn get_claude_context(state: tauri::State<'_, AppState>, project: String) 
         return Err("Project was not found in the granted Claude Code sessions".into());
     }
     tauri::async_runtime::spawn_blocking(move || claude_context::snapshot(Path::new(&project)))
+        .await.map_err(|error| error.to_string())?
+}
+
+#[tauri::command]
+fn claude_cli_available(state: tauri::State<AppState>) -> Result<bool, String> {
+    let sample = state.sources.lock().map_err(|error| error.to_string())?.config.sample;
+    Ok(!access::is_sandboxed() && !sample && claude_launch::available())
+}
+
+/// Start the existing recommendation prompt in an interactive terminal so
+/// Claude can ask the user before changing any configuration.
+#[tauri::command]
+async fn launch_claude_prompt(state: tauri::State<'_, AppState>, project: String, prompt: String) -> Result<(), String> {
+    if access::is_sandboxed() {
+        return Err("The sandboxed build cannot launch Claude Code".into());
+    }
+    if state.sources.lock().map_err(|error| error.to_string())?.config.sample {
+        return Err("Claude Code is unavailable while viewing sample data".into());
+    }
+    let known = state.db.lock().map_err(|error| error.to_string())?
+        .all_sessions().map_err(|error| error.to_string())?
+        .iter().any(|session| session.project == project);
+    if !known {
+        return Err("Project was not found in the granted sessions".into());
+    }
+    tauri::async_runtime::spawn_blocking(move || claude_launch::launch(Path::new(&project), &prompt))
         .await.map_err(|error| error.to_string())?
 }
 
@@ -376,6 +403,8 @@ pub fn run() {
             list_sessions,
             get_tool_usage,
             get_claude_context,
+            claude_cli_available,
+            launch_claude_prompt,
             get_session_detail,
             rescan,
             reset_database,
