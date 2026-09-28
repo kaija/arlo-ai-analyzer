@@ -20,6 +20,9 @@ export async function invoke<T = unknown>(cmd: string, _args?: unknown): Promise
   if (cmd === "get_tool_usage") {
     return { sessions: [], listed: [] } as unknown as T;
   }
+  if (cmd === "get_claude_context") {
+    throw new Error("Live Claude context requires the desktop app");
+  }
   if (cmd === "get_session_detail") {
     return { requests: [], compactions: [], transcript_path: null } as unknown as T;
   }

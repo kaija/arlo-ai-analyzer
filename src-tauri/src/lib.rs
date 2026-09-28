@@ -1,6 +1,7 @@
 mod access;
 mod bookmark;
 mod catalog;
+mod claude_context;
 mod plans;
 mod tray;
 
@@ -137,6 +138,26 @@ fn get_tool_usage(state: tauri::State<AppState>) -> Result<usage_core::tool_usag
         .map(usage_core::tool_usage::codex_mcp_servers)
         .unwrap_or_default();
     Ok(usage_core::tool_usage::report(stored, configured, ToolKind::CodexCli))
+}
+
+/// Read Claude Code's current context setup for a project seen in the granted logs.
+/// `/context` is a local built-in command; print mode does not save a session.
+#[tauri::command]
+async fn get_claude_context(state: tauri::State<'_, AppState>, project: String) -> Result<claude_context::ContextSnapshot, String> {
+    if access::is_sandboxed() {
+        return Err("The sandboxed build cannot read Claude Code's CLI configuration".into());
+    }
+    if state.sources.lock().map_err(|e| e.to_string())?.config.sample {
+        return Err("Live Claude context is unavailable while viewing sample data".into());
+    }
+    let known = state.db.lock().map_err(|e| e.to_string())?
+        .all_sessions().map_err(|e| e.to_string())?
+        .iter().any(|session| session.tool == ToolKind::ClaudeCode && session.project == project);
+    if !known {
+        return Err("Project was not found in the granted Claude Code sessions".into());
+    }
+    tauri::async_runtime::spawn_blocking(move || claude_context::snapshot(Path::new(&project)))
+        .await.map_err(|error| error.to_string())?
 }
 
 #[tauri::command]
@@ -354,6 +375,7 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             list_sessions,
             get_tool_usage,
+            get_claude_context,
             get_session_detail,
             rescan,
             reset_database,

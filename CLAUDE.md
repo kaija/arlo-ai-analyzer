@@ -102,6 +102,13 @@ can window them. Analysis, tiers and recommendations are front-end (`src/lib/too
 - `baseline_tokens` = first request's prompt on the session's main model; `None` when the file opens
   with replayed requests (resumed session, subagent).
 - Listing sizes are estimates (ASCII/4 + one per non-ASCII char). `null` tokens = unknown.
+- The Tools page also shows a separate live Claude Code context snapshot for a selected project.
+  `get_claude_context` runs `claude -p --no-session-persistence --max-budget-usd 0.000001 --output-format json '/context'`
+  in that project's directory with a minimal budget cap. It only accepts a zero-turn, zero-token
+  result. If Claude changes the inner text layout, the page shows its complete original output;
+  if the CLI or JSON usage check fails, historical session totals and recommendations remain.
+  The App Store sandbox cannot give the external CLI access to its configuration, so this live
+  snapshot is unavailable there; the Tools page explains that and keeps the historical view.
 
 ### Sandbox and folder access (App Store build)
 

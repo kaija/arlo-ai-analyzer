@@ -7,6 +7,7 @@ import { contextWindow } from "../../pricing";
 import { SegmentedControl } from "../../primitives/SegmentedControl";
 import { TOOL_LABELS, type ToolKind } from "../../types";
 import { GuidelinesCard } from "./GuidelinesCard";
+import { ClaudeContextCard } from "./ClaudeContextCard";
 import { RecommendationsCard } from "./RecommendationsCard";
 import { StartingContextCard } from "./StartingContextCard";
 import { ToolStatTiles } from "./ToolStatTiles";
@@ -24,7 +25,7 @@ const TOOLS: ToolKind[] = ["claude_code", "codex_cli"];
 export default function ToolsPage() {
   const { t } = useTranslation();
   const { report, error } = useToolUsage();
-  const { sessions } = useSessionsContext();
+  const { sessions, access } = useSessionsContext();
   const [tool, setTool] = useState<ToolKind>("claude_code");
   const [range, setRange] = useState<Range>("30d");
   const days = RANGE_DAYS[range];
@@ -72,6 +73,7 @@ export default function ToolsPage() {
 
       <div className="tools-body">
         <h1 className="sr-only">{t("page.tools")}</h1>
+        {tool === "claude_code" && access && !access.sample && <ClaudeContextCard sessions={sessions} sandboxed={access.sandboxed} />}
         {error && <div className="card tools-note">{t("tools.error", { error })}</div>}
         {!analysis && !error && <div className="tools-note">{t("tools.loading")}</div>}
         {analysis && analysis.sessions === 0 && (

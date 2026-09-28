@@ -755,6 +755,27 @@ html.tray-window, html.tray-window body { height: auto; overflow: hidden; backgr
 .tools-empty { padding: 32px 24px; text-align: center; }
 .tools-empty p { font-size: 12.5px; color: var(--muted); margin: 8px 0 0; }
 
+/* Live Claude Code context for the selected project */
+.claude-context-card { overflow: hidden; }
+.claude-context-head { gap: 16px; flex-wrap: wrap; }
+.claude-context-subtitle { margin-top: 4px; font-size: 12px; color: var(--muted); }
+.claude-context-controls { display: flex; align-items: center; gap: 8px; min-width: 0; flex: 1 1 360px; justify-content: flex-end; }
+.claude-context-controls select { min-width: 0; max-width: 480px; flex: 1; padding: 7px 10px; border: 1px solid var(--border-strong); border-radius: 8px; background: var(--surface); font-size: 12px; }
+.claude-context-content { padding: 20px; }
+.claude-context-summary { display: flex; align-items: baseline; gap: 16px; flex-wrap: wrap; }
+.claude-context-summary span { color: var(--muted); font-size: 12px; }
+.claude-context-sections { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; margin-top: 18px; }
+.claude-context-sections details { min-width: 0; border: 1px solid var(--border); border-radius: 10px; }
+.claude-context-sections summary { padding: 11px 14px; cursor: pointer; font-size: 12.5px; font-weight: 600; }
+.claude-context-sections summary span { color: var(--muted); font-weight: 400; }
+.claude-context-table-scroll { max-height: 330px; overflow: auto; border-top: 1px solid var(--border); }
+.claude-context-table-scroll .dtable td:first-child { white-space: normal; overflow-wrap: anywhere; }
+.claude-context-raw { margin-top: 16px; border: 1px solid var(--border); border-radius: 10px; }
+.claude-context-raw summary { padding: 11px 14px; cursor: pointer; font-size: 12.5px; font-weight: 600; }
+.claude-context-raw pre { margin: 0; padding: 14px; max-height: 420px; overflow: auto; border-top: 1px solid var(--border); font-family: "SF Mono", "JetBrains Mono", monospace; font-size: 11.5px; line-height: 1.5; white-space: pre-wrap; overflow-wrap: anywhere; user-select: text; }
+.claude-context-note { margin: 12px 0 0; font-size: 11.5px; color: var(--muted); }
+@media (max-width: 800px) { .claude-context-sections { grid-template-columns: minmax(0, 1fr); } }
+
 /* Starting-context bar with the "tenth of the window" marker */
 .ctx-bar { position: relative; display: flex; height: 14px; border-radius: 4px; background: var(--border); overflow: visible; margin-bottom: 18px; }
 .ctx-bar span { height: 100%; }
