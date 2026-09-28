@@ -141,7 +141,7 @@
 }
 
 * { box-sizing: border-box; }
-html, body { height: 100%; }
+html, body { height: 100%; overflow: hidden; }
 body {
   margin: 0;
   background: var(--bg);
@@ -219,7 +219,7 @@ svg text { font-family: inherit; }
 .sidebar-collapse-btn svg { width: 15px; height: 15px; }
 
 .main-col { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; overflow: hidden; }
-.content-scroll { flex: 1 1 auto; overflow-y: auto; }
+.content-scroll { flex: 1 1 auto; min-height: 0; overflow-y: auto; overscroll-behavior-y: contain; }
 
 /* ---------- Topbar / theme toggle ---------- */
 .topbar {
@@ -825,14 +825,22 @@ html.tray-window, html.tray-window body { height: auto; overflow: hidden; backgr
 .tools-table-card { overflow: hidden; }
 .tools-table-tools { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; justify-content: flex-end; }
 .tools-table-card .card-head { gap: 12px; flex-wrap: wrap; }
+.tools-table { table-layout: fixed; }
+.tools-table th { position: relative; padding-right: 16px; }
+.tools-table td { max-width: none; overflow: hidden; text-overflow: ellipsis; }
 .tools-table td.muted { color: var(--muted); }
-.tools-name { min-width: 200px; max-width: 300px; }
+.tools-name { min-width: 0; }
 .tools-name-text { display: block; overflow: hidden; text-overflow: ellipsis; font-weight: 600; }
-.tools-name-sub { display: inline-block; margin-right: 6px; font-size: 11px; color: var(--muted); }
+.tools-name-sub { display: block; overflow: hidden; text-overflow: ellipsis; margin-right: 6px; font-size: 11px; color: var(--muted); }
 .tools-row-unused td { background: color-mix(in srgb, var(--critical-wash) 45%, transparent); }
-.share-cell { display: inline-flex; align-items: center; gap: 8px; min-width: 150px; }
-.share-cell .rbar-track { width: 70px; height: 6px; border-radius: 999px; background: var(--border-strong); overflow: hidden; }
+.share-cell { display: flex; align-items: center; gap: 8px; width: 100%; min-width: 0; }
+.share-cell .rbar-track { flex: 0 0 70px; height: 6px; border-radius: 999px; background: var(--border-strong); overflow: hidden; }
 .share-cell .rbar-fill { display: block; height: 100%; border-radius: 999px; background: var(--accent); }
+.share-cell .tnum { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.tools-column-resize { position: absolute; top: 0; right: 0; bottom: 0; width: 12px; cursor: col-resize; touch-action: none; }
+.tools-column-resize::after { content: ""; position: absolute; top: 20%; bottom: 20%; left: 5px; width: 2px; border-radius: 2px; background: var(--border-strong); }
+.tools-column-resize:hover::after, .tools-column-resize:focus-visible::after { background: var(--accent); }
+.tools-column-resize:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
 .tools-err-high { color: var(--critical); font-weight: 600; }
 
 /* Guidelines */

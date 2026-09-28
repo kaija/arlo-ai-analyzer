@@ -379,6 +379,7 @@
       "errors": "Errors",
       "lastUsed": "Last used",
       "perRequest": "Per request",
+      "resizeColumn": "Resize {{column}} column",
       "perRequestTitle": "Estimated tokens its description adds to every request",
       "builtinCost": "Part of the system prompt",
       "mcpTools": "{{used}}/{{total}} tools used",

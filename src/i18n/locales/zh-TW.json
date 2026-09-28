@@ -379,6 +379,7 @@
       "errors": "錯誤",
       "lastUsed": "最後使用",
       "perRequest": "每請求成本",
+      "resizeColumn": "調整{{column}}欄寬",
       "perRequestTitle": "它的描述在每個請求中估計增加的 token",
       "builtinCost": "屬於系統提示詞的一部分",
       "mcpTools": "使用了 {{used}}/{{total}} 個工具",

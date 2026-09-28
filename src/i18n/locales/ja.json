@@ -379,6 +379,7 @@
       "errors": "エラー",
       "lastUsed": "最終使用",
       "perRequest": "1 リクエストあたり",
+      "resizeColumn": "{{column}}列の幅を変更",
       "perRequestTitle": "説明が毎リクエストに追加する推定トークン数",
       "builtinCost": "システムプロンプトの一部",
       "mcpTools": "{{total}} 個中 {{used}} 個のツールを使用",

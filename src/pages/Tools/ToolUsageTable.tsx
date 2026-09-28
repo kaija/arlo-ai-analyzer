@@ -1,4 +1,5 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import type { KeyboardEvent, PointerEvent } from "react";
 import { useTranslation } from "react-i18next";
 import type { CapabilityRow, ToolAnalysis, UsageTier } from "../../lib/tool-usage";
 import { fmtDate, fmtTokens } from "../../lib/format";
@@ -20,11 +21,87 @@ const TIER_VARIANT: Record<UsageTier, "good" | "accent" | "warning" | "critical"
 /** A failure rate worth pointing at. */
 const HIGH_ERROR_RATE = 0.2;
 
+const COLUMNS = [
+  { key: "name", width: 240, min: 140 },
+  { key: "type", width: 80, min: 65 },
+  { key: "status", width: 85, min: 70 },
+  { key: "calls", width: 110, min: 85 },
+  { key: "sessions", width: 205, min: 150 },
+  { key: "errors", width: 110, min: 90 },
+  { key: "lastUsed", width: 145, min: 110 },
+  { key: "perRequest", width: 130, min: 105 },
+] as const;
+const COLUMN_WIDTHS_KEY = "arlo-tools-column-widths";
+const MAX_COLUMN_WIDTH = 2000;
+
+function initialColumnWidths(): number[] {
+  const defaults = COLUMNS.map((column) => column.width);
+  try {
+    const saved: unknown = JSON.parse(localStorage.getItem(COLUMN_WIDTHS_KEY) ?? "null");
+    if (Array.isArray(saved) && saved.length === COLUMNS.length && saved.every((width, index) =>
+      Number.isInteger(width) && width >= COLUMNS[index].min && width <= MAX_COLUMN_WIDTH
+    )) return saved as number[];
+  } catch { /* Storage can be unavailable in embedded webviews. */ }
+  return defaults;
+}
+
 export function ToolUsageTable({ analysis: a }: { analysis: ToolAnalysis }) {
   const { t } = useTranslation();
   const [kind, setKind] = useState<KindFilter>("all");
+  const [columnWidths, setColumnWidths] = useState(initialColumnWidths);
+  const drag = useRef<{ pointerId: number; index: number; x: number; width: number } | null>(null);
   const rows = useMemo(() => a.rows.filter((r) => kind === "all" || r.kind === kind), [a.rows, kind]);
   const maxShare = Math.max(0.0001, ...a.rows.map((r) => r.sessionShare));
+
+  useEffect(() => {
+    try { localStorage.setItem(COLUMN_WIDTHS_KEY, JSON.stringify(columnWidths)); }
+    catch { /* Keep the current widths when storage is unavailable. */ }
+  }, [columnWidths]);
+
+  function setColumnWidth(index: number, width: number) {
+    setColumnWidths((current) => {
+      const next = [...current];
+      next[index] = Math.max(COLUMNS[index].min, Math.min(MAX_COLUMN_WIDTH, Math.round(width)));
+      return next;
+    });
+  }
+
+  function finishResize() {
+    drag.current = null;
+  }
+
+  function startResize(event: PointerEvent<HTMLSpanElement>, index: number) {
+    event.preventDefault();
+    event.currentTarget.setPointerCapture(event.pointerId);
+    // A wide table stretches its columns to fill the card. Lock their rendered
+    // widths before dragging so the pointer moves the divider by the same amount.
+    const renderedWidths = [...event.currentTarget.closest("table")!.querySelectorAll("thead th")]
+      .map((header) => Math.round(header.getBoundingClientRect().width));
+    setColumnWidths(renderedWidths);
+    drag.current = {
+      pointerId: event.pointerId,
+      index,
+      x: event.clientX,
+      width: renderedWidths[index],
+    };
+  }
+
+  function moveResize(event: PointerEvent<HTMLSpanElement>) {
+    const current = drag.current;
+    if (current?.pointerId === event.pointerId) {
+      setColumnWidth(current.index, current.width + event.clientX - current.x);
+    }
+  }
+
+  function keyResize(event: KeyboardEvent<HTMLSpanElement>, index: number) {
+    if (event.key !== "ArrowLeft" && event.key !== "ArrowRight") return;
+    event.preventDefault();
+    const next = [...event.currentTarget.closest("table")!.querySelectorAll("thead th")]
+      .map((header) => Math.round(header.getBoundingClientRect().width));
+    next[index] = Math.max(COLUMNS[index].min, Math.min(MAX_COLUMN_WIDTH,
+      next[index] + (event.key === "ArrowRight" ? 10 : -10)));
+    setColumnWidths(next);
+  }
 
   return (
     <div className="card tools-table-card">
@@ -41,19 +118,26 @@ export function ToolUsageTable({ analysis: a }: { analysis: ToolAnalysis }) {
         </div>
       </div>
       <div className="table-scroll-x">
-        <table className="dtable tools-table">
+        <table className="dtable tools-table" style={{ minWidth: columnWidths.reduce((sum, width) => sum + width, 0) }}>
+          <colgroup>{columnWidths.map((width, index) => <col key={COLUMNS[index].key} style={{ width }} />)}</colgroup>
           <thead>
             <tr>
-              <th>{t("tools.table.name")}</th>
-              <th>{t("tools.table.type")}</th>
-              <th>{t("tools.table.status")}</th>
-              <th className="num">{t("tools.table.calls")}</th>
-              <th>{t("tools.table.sessions")}</th>
-              <th className="num">{t("tools.table.errors")}</th>
-              <th>{t("tools.table.lastUsed")}</th>
-              <th className="num" title={t("tools.table.perRequestTitle")}>
-                {t("tools.table.perRequest")}
-              </th>
+              {COLUMNS.map((column, index) => {
+                const label = t(`tools.table.${column.key}`);
+                return (
+                  <th key={column.key} className={column.key === "calls" || column.key === "errors" || column.key === "perRequest" ? "num" : undefined}
+                    title={column.key === "perRequest" ? t("tools.table.perRequestTitle") : undefined}>
+                    {label}
+                    <span className="tools-column-resize" role="separator" tabIndex={0}
+                      aria-label={t("tools.table.resizeColumn", { column: label })}
+                      aria-orientation="vertical" aria-valuemin={column.min} aria-valuemax={MAX_COLUMN_WIDTH}
+                      aria-valuenow={columnWidths[index]}
+                      onPointerDown={(event) => startResize(event, index)} onPointerMove={moveResize}
+                      onPointerUp={finishResize} onPointerCancel={finishResize}
+                      onKeyDown={(event) => keyResize(event, index)} />
+                  </th>
+                );
+              })}
             </tr>
           </thead>
           <tbody>

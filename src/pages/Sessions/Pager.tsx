@@ -12,7 +12,7 @@ export interface PagerProps {
  *
  * Shows "Page N of M" (1-based display) with Previous / Next buttons.
  * Previous is disabled on the first page; Next is disabled on the last page.
- * Each button scrolls the table back to top via `window.scrollTo`.
+ * Each button scrolls the page content back to the top.
  */
 export function Pager({ page, totalPages, onPrev, onNext }: PagerProps) {
   // Clamp display to at least "Page 1 of 1" when there are no results
@@ -22,16 +22,20 @@ export function Pager({ page, totalPages, onPrev, onNext }: PagerProps) {
   const isFirst = page <= 0;
   const isLast = page >= totalPages - 1 || totalPages === 0;
 
+  function scrollToTop() {
+    document.querySelector<HTMLElement>(".content-scroll")?.scrollTo({ top: 0, behavior: "smooth" });
+  }
+
   function handlePrev() {
     if (!isFirst) {
-      window.scrollTo({ top: 0, behavior: "smooth" });
+      scrollToTop();
       onPrev();
     }
   }
 
   function handleNext() {
     if (!isLast) {
-      window.scrollTo({ top: 0, behavior: "smooth" });
+      scrollToTop();
       onNext();
     }
   }
