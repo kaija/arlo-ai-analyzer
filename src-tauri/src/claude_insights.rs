@@ -57,7 +57,7 @@ fn latest_report(dir: &Path) -> Result<Option<InsightsReport>, String> {
         };
         candidates.push((modified, canonical));
     }
-    candidates.sort_by(|a, b| b.0.cmp(&a.0));
+    candidates.sort_by_key(|a| std::cmp::Reverse(a.0));
     let Some((modified, path)) = candidates.into_iter().next() else {
         return Ok(None);
     };
