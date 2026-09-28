@@ -462,16 +462,6 @@ html:lang(ja) body {
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Hiragino Sans', 'Hiragino Kaku Gothic ProN', 'Noto Sans JP', 'Yu Gothic UI', Meiryo, 'Segoe UI', Roboto, sans-serif;
 }
 
-/* Not on the store yet — looks like a button, isn't one. */
-.btn-soon {
-  cursor: default;
-  color: var(--color-text-secondary);
-}
-
-.btn-soon:hover {
-  background: var(--color-bg);
-}
-
 /* Screenshots sit in a macOS window chrome. */
 .window {
   background: var(--color-bg);

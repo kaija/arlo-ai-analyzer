@@ -22,11 +22,11 @@
       'nav.language': '選擇語言',
       'nav.toggle': '開關選單',
 
-      'hero.badge': '即將登上 Mac App Store · 免費且開源',
+      'hero.badge': '已在 Mac App Store 上架 · 免費且開源',
       'hero.title': '看清你的 AI<br/>寫程式花了多少。',
       'hero.subtitle': 'Arlo AI Analyzer 讀取你 Mac 上既有的 Claude Code 與 Codex CLI 紀錄，整理成 token、費用與 context 報表 — 依 session、依模型、依日期。資料完全不離開你的電腦。',
       'hero.ctaGithub': '在 GitHub 上查看',
-      'hero.ctaStore': 'Mac App Store — 敬請期待',
+      'hero.ctaStore': '前往 Mac App Store 下載',
       'hero.tools': '支援讀取',
       'shot.dashboard': 'Arlo AI Analyzer 儀表板：API 等值金額、請求數、token 與活躍天數，下方是依模型堆疊的每日用量圖',
 
@@ -102,11 +102,11 @@
       'nav.language': '言語を選択',
       'nav.toggle': 'メニューを開閉',
 
-      'hero.badge': 'Mac App Store に近日登場 · 無料・オープンソース',
+      'hero.badge': 'Mac App Store で配信中 · 無料・オープンソース',
       'hero.title': 'AI コーディングの<br/>トークン、どこへ消えた？',
       'hero.subtitle': 'Arlo AI Analyzer は、Mac にすでにある Claude Code と Codex CLI のログを読み込み、トークン・コスト・コンテキストのレポートにまとめます。セッション別、モデル別、日別に。データはマシンの外に出ません。',
       'hero.ctaGithub': 'GitHub で見る',
-      'hero.ctaStore': 'Mac App Store — 近日公開',
+      'hero.ctaStore': 'Mac App Store で入手',
       'hero.tools': '対応ログ',
       'shot.dashboard': 'Arlo AI Analyzer のダッシュボード：API 換算額、リクエスト数、トークン、稼働日数と、モデル別に積み上げた日別使用量グラフ',
 
