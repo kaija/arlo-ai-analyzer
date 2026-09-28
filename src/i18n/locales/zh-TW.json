@@ -1,4 +1,24 @@
 {
+  "claudeInsights": {
+    "title": "你的 Claude Code 使用洞察",
+    "subtitle": "讓你自己的 Claude CLI 回顧過往工作階段，找出使用模式、卡住的地方與改善建議。",
+    "source": "根據本機 Claude Code 紀錄",
+    "updated": "產生於 {{date}}",
+    "generate": "產生洞察報告",
+    "regenerate": "重新產生",
+    "generating": "分析中…",
+    "openReport": "開啟完整報告",
+    "preview": "報告預覽",
+    "emptyTitle": "更了解自己的 AI 工作方式",
+    "emptyBody": "使用 Claude Code 內建的 /insights 指令產生個人診斷報告。",
+    "loading": "正在尋找現有報告…",
+    "waitHint": "Claude 正在分析你的工作階段，可能需要幾分鐘，並會使用你的 Claude 方案額度。",
+    "unavailable": "範例資料或沙盒版本無法使用即時 Claude 洞察。",
+    "installCli": "請安裝 Claude Code CLI 並登入，即可產生報告。",
+    "loadFailed": "無法載入 Claude 洞察：{{error}}",
+    "generateFailed": "無法產生 Claude 洞察：{{error}}",
+    "openFailed": "無法開啟 Claude 洞察：{{error}}"
+  },
   "nav": {
     "dashboard": "總覽",
     "sessions": "工作階段",

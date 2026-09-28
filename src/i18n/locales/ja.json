@@ -1,4 +1,24 @@
 {
+  "claudeInsights": {
+    "title": "Claude Code の利用インサイト",
+    "subtitle": "ご自身の Claude CLI で過去のセッションを振り返り、作業パターン、つまずき、改善案を見つけます。",
+    "source": "ローカルの Claude Code 履歴に基づく分析",
+    "updated": "{{date}} に生成",
+    "generate": "インサイトを生成",
+    "regenerate": "再生成",
+    "generating": "分析中…",
+    "openReport": "レポートを開く",
+    "preview": "レポートのプレビュー",
+    "emptyTitle": "AI との作業をもっと理解する",
+    "emptyBody": "Claude Code 内蔵の /insights コマンドで個人レポートを生成します。",
+    "loading": "既存のレポートを探しています…",
+    "waitHint": "Claude がセッションを分析しています。数分かかる場合があり、Claude プランの利用枠を使用します。",
+    "unavailable": "サンプルデータまたはサンドボックス版では利用できません。",
+    "installCli": "レポートを生成するには Claude Code CLI をインストールしてログインしてください。",
+    "loadFailed": "Claude インサイトを読み込めませんでした: {{error}}",
+    "generateFailed": "Claude インサイトを生成できませんでした: {{error}}",
+    "openFailed": "Claude インサイトを開けませんでした: {{error}}"
+  },
   "nav": {
     "dashboard": "ダッシュボード",
     "sessions": "セッション",

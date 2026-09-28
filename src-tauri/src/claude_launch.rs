@@ -19,7 +19,7 @@ on run argv
 end run
 "#;
 
-fn find_binary() -> Option<PathBuf> {
+pub(crate) fn find_binary() -> Option<PathBuf> {
     let mut candidates: Vec<PathBuf> = std::env::var_os("PATH")
         .map(|path| {
             std::env::split_paths(&path)

@@ -2,6 +2,7 @@ mod access;
 mod bookmark;
 mod catalog;
 mod claude_context;
+mod claude_insights;
 mod claude_launch;
 mod plans;
 mod tray;
@@ -165,6 +166,42 @@ async fn get_claude_context(state: tauri::State<'_, AppState>, project: String) 
 fn claude_cli_available(state: tauri::State<AppState>) -> Result<bool, String> {
     let sample = state.sources.lock().map_err(|error| error.to_string())?.config.sample;
     Ok(!access::is_sandboxed() && !sample && claude_launch::available())
+}
+
+#[tauri::command]
+async fn get_claude_insights(state: tauri::State<'_, AppState>) -> Result<Option<claude_insights::InsightsReport>, String> {
+    if access::is_sandboxed() {
+        return Err("The sandboxed build cannot read Claude Code reports".into());
+    }
+    if state.sources.lock().map_err(|error| error.to_string())?.config.sample {
+        return Err("Claude Code insights are unavailable while viewing sample data".into());
+    }
+    tauri::async_runtime::spawn_blocking(claude_insights::current_report)
+        .await.map_err(|error| error.to_string())?
+}
+
+#[tauri::command]
+async fn generate_claude_insights(state: tauri::State<'_, AppState>) -> Result<claude_insights::InsightsReport, String> {
+    if access::is_sandboxed() {
+        return Err("The sandboxed build cannot run Claude Code".into());
+    }
+    if state.sources.lock().map_err(|error| error.to_string())?.config.sample {
+        return Err("Claude Code insights are unavailable while viewing sample data".into());
+    }
+    tauri::async_runtime::spawn_blocking(claude_insights::generate)
+        .await.map_err(|error| error.to_string())?
+}
+
+#[tauri::command]
+async fn open_claude_insights_report(state: tauri::State<'_, AppState>, path: String) -> Result<(), String> {
+    if access::is_sandboxed() {
+        return Err("The sandboxed build cannot open Claude Code reports".into());
+    }
+    if state.sources.lock().map_err(|error| error.to_string())?.config.sample {
+        return Err("Claude Code insights are unavailable while viewing sample data".into());
+    }
+    tauri::async_runtime::spawn_blocking(move || claude_insights::open_report(&path))
+        .await.map_err(|error| error.to_string())?
 }
 
 /// Start the existing recommendation prompt in an interactive terminal so
@@ -403,6 +440,9 @@ pub fn run() {
             list_sessions,
             get_tool_usage,
             get_claude_context,
+            get_claude_insights,
+            generate_claude_insights,
+            open_claude_insights_report,
             claude_cli_available,
             launch_claude_prompt,
             get_session_detail,

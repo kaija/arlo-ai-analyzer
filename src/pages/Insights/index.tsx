@@ -20,6 +20,7 @@ import { ContextHealthCard } from "./ContextHealthCard";
 import { McpAttributionCard } from "./McpAttributionCard";
 import { ModelRightsizingCard } from "./ModelRightsizingCard";
 import { ToolFailuresCard } from "./ToolFailuresCard";
+import { ClaudeInsightsCard } from "./ClaudeInsightsCard";
 
 /**
  * Insights page
@@ -30,7 +31,7 @@ import { ToolFailuresCard } from "./ToolFailuresCard";
  * Requirements: 6.1–6.15, 8.1, 8.7, 8.8
  */
 export default function InsightsPage() {
-  const { sessions } = useSessionsContext();
+  const { sessions, access } = useSessionsContext();
   const { contextAlertThreshold, monthlyBudget } = useSettingsContext();
 
   // ---------------------------------------------------------------------------
@@ -114,6 +115,7 @@ export default function InsightsPage() {
   return (
     <div className="insights-body">
       <h1 className="sr-only">Insights</h1>
+      <ClaudeInsightsCard access={access} />
       <div className="insights-grid">
         <ContextHealthCard rows={contextRows} threshold={contextAlertThreshold} />
         <CacheEfficiencyCard

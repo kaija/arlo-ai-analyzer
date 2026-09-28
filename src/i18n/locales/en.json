@@ -1,4 +1,24 @@
 {
+  "claudeInsights": {
+    "title": "Your Claude Code insights",
+    "subtitle": "Let your own Claude CLI review past sessions and reveal working patterns, friction points, and ways to improve.",
+    "source": "Based on your local Claude Code history",
+    "updated": "Generated {{date}}",
+    "generate": "Generate insights",
+    "regenerate": "Generate again",
+    "generating": "Analyzing…",
+    "openReport": "Open full report",
+    "preview": "Report preview",
+    "emptyTitle": "A clearer picture of how you work",
+    "emptyBody": "Generate a personal report with Claude Code's built-in /insights command.",
+    "loading": "Looking for an existing report…",
+    "waitHint": "Claude is analyzing your sessions. This may take a few minutes and use your Claude plan.",
+    "unavailable": "Live Claude insights are unavailable in sample data or the sandboxed build.",
+    "installCli": "Install and sign in to Claude Code CLI to generate a report.",
+    "loadFailed": "Could not load Claude insights: {{error}}",
+    "generateFailed": "Could not generate Claude insights: {{error}}",
+    "openFailed": "Could not open Claude insights: {{error}}"
+  },
   "nav": {
     "dashboard": "Dashboard",
     "sessions": "Sessions",

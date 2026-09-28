@@ -23,6 +23,15 @@ export async function invoke<T = unknown>(cmd: string, _args?: unknown): Promise
   if (cmd === "get_claude_context") {
     throw new Error("Live Claude context requires the desktop app");
   }
+  if (cmd === "get_claude_insights") {
+    return null as unknown as T;
+  }
+  if (cmd === "generate_claude_insights") {
+    throw new Error("Claude Code insights require the desktop app");
+  }
+  if (cmd === "open_claude_insights_report") {
+    throw new Error("Opening Claude Code insights requires the desktop app");
+  }
   if (cmd === "claude_cli_available") {
     return false as unknown as T;
   }
