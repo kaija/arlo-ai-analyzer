@@ -32,6 +32,26 @@ expires=$(security cms -D -i "$PROFILE" | plutil -extract ExpirationDate raw -o 
 
 VERSION=$(node -p "require('./src-tauri/tauri.conf.json').version")
 PRODUCT=$(node -p "require('./src-tauri/tauri.conf.json').productName")
+BUNDLE_ID=$(node -p "require('./src-tauri/tauri.conf.json').identifier")
+EXPECTED_APP_ID="H2ZM466J6A.$BUNDLE_ID"
+
+# Fail before the universal build if the downloaded profile belongs to another
+# app or platform (an iOS profile can otherwise look valid until upload).
+security cms -D -i "$PROFILE" | EXPECTED_APP_ID="$EXPECTED_APP_ID" python3 -c '
+import os
+import plistlib
+import sys
+
+profile = plistlib.loads(sys.stdin.buffer.read())
+entitlements = profile.get("Entitlements", {})
+app_id = entitlements.get("com.apple.application-identifier") or entitlements.get("application-identifier")
+expected = os.environ["EXPECTED_APP_ID"]
+if app_id != expected:
+    display_id = app_id if app_id else "(missing)"
+    sys.exit(f"error: profile app ID {display_id} does not match {expected}")
+if not set(profile.get("Platform", [])) & {"OSX", "macOS"}:
+    sys.exit("error: provisioning profile is not for macOS")
+'
 echo "==> Building $PRODUCT $VERSION (build $BUILD_NUMBER)"
 
 pnpm tauri build \

@@ -1,13 +1,12 @@
-# Builds the Mac App Store package and uploads it to App Store Connect
-# (TestFlight, then submit for review by hand) whenever `release` moves —
-# i.e. when a PR into `release` is merged.
+# Builds a signed Mac App Store package. Pushes to `release` also upload it
+# to App Store Connect; manual runs build only unless upload is selected.
 #
 # Setup (secrets and variables live on the `app-store` environment):
 #   MAC_APP_CERT_P12 / MAC_APP_CERT_PASSWORD             3rd Party Mac Developer Application, .p12 as base64
 #   MAC_INSTALLER_CERT_P12 / MAC_INSTALLER_CERT_PASSWORD 3rd Party Mac Developer Installer, .p12 as base64
 #   MAC_PROVISIONING_PROFILE                             embedded.provisionprofile as base64
 #   ASC_KEY_ID / ASC_ISSUER_ID / ASC_PRIVATE_KEY         App Store Connect API key (the .p8's text)
-#   vars.BUILD_NUMBER_OFFSET                             build number = run number + this (default 4)
+#   vars.BUILD_NUMBER_OFFSET                             build number = run number + this (default 5)
 #
 # The build number only ever goes up with the run number. After uploading a
 # build by hand, raise BUILD_NUMBER_OFFSET past it or the next upload is
@@ -18,6 +17,11 @@ on:
   push:
     branches: [release]
   workflow_dispatch:
+    inputs:
+      upload:
+        description: Upload the package to App Store Connect after building
+        type: boolean
+        default: false
 
 permissions:
   contents: write # the appstore/* tag pushed after an upload
@@ -27,14 +31,44 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  upload:
+  package:
     runs-on: macos-15
     environment: app-store
     timeout-minutes: 90
     env:
-      BUILD_NUMBER_OFFSET: ${{ vars.BUILD_NUMBER_OFFSET || '4' }}
+      BUILD_NUMBER_OFFSET: ${{ vars.BUILD_NUMBER_OFFSET || '5' }}
+      UPLOAD_TO_ASC: ${{ github.event_name == 'push' || inputs.upload }}
     steps:
       - uses: actions/checkout@v7
+
+      - name: Check signing and upload settings
+        env:
+          MAC_APP_CERT_P12: ${{ secrets.MAC_APP_CERT_P12 }}
+          MAC_APP_CERT_PASSWORD: ${{ secrets.MAC_APP_CERT_PASSWORD }}
+          MAC_INSTALLER_CERT_P12: ${{ secrets.MAC_INSTALLER_CERT_P12 }}
+          MAC_INSTALLER_CERT_PASSWORD: ${{ secrets.MAC_INSTALLER_CERT_PASSWORD }}
+          MAC_PROVISIONING_PROFILE: ${{ secrets.MAC_PROVISIONING_PROFILE }}
+          ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+          ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+          ASC_PRIVATE_KEY: ${{ secrets.ASC_PRIVATE_KEY }}
+        run: |
+          set -euo pipefail
+          missing=0
+          required=(MAC_APP_CERT_P12 MAC_APP_CERT_PASSWORD MAC_INSTALLER_CERT_P12 MAC_INSTALLER_CERT_PASSWORD MAC_PROVISIONING_PROFILE)
+          if [[ "$UPLOAD_TO_ASC" == true ]]; then
+            required+=(ASC_KEY_ID ASC_ISSUER_ID ASC_PRIVATE_KEY)
+          fi
+          for name in "${required[@]}"; do
+            if [[ -z "${!name}" ]]; then
+              echo "::error title=Missing secret::$name must be set on the app-store environment"
+              missing=1
+            fi
+          done
+          if [[ ! "$BUILD_NUMBER_OFFSET" =~ ^[0-9]+$ ]]; then
+            echo "::error title=Invalid build offset::BUILD_NUMBER_OFFSET must be a non-negative integer"
+            missing=1
+          fi
+          exit "$missing"
 
       - uses: pnpm/action-setup@v4
         with:
@@ -65,7 +99,9 @@ jobs:
           MAC_INSTALLER_CERT_P12: ${{ secrets.MAC_INSTALLER_CERT_P12 }}
           MAC_INSTALLER_CERT_PASSWORD: ${{ secrets.MAC_INSTALLER_CERT_PASSWORD }}
         run: |
+          set -euo pipefail
           KEYCHAIN="$RUNNER_TEMP/signing.keychain-db"
+          echo "KEYCHAIN=$KEYCHAIN" >> "$GITHUB_ENV"
           KEYCHAIN_PASSWORD=$(openssl rand -hex 24)
           security create-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN"
           security set-keychain-settings -lut 21600 "$KEYCHAIN"
@@ -87,12 +123,13 @@ jobs:
           security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "$KEYCHAIN_PASSWORD" "$KEYCHAIN" > /dev/null
           security list-keychains -d user -s "$KEYCHAIN" login.keychain-db
           security find-identity -v -p codesigning "$KEYCHAIN"
-          echo "KEYCHAIN=$KEYCHAIN" >> "$GITHUB_ENV"
 
       - name: Install provisioning profile
         env:
           MAC_PROVISIONING_PROFILE: ${{ secrets.MAC_PROVISIONING_PROFILE }}
-        run: printf '%s' "$MAC_PROVISIONING_PROFILE" | base64 --decode > src-tauri/embedded.provisionprofile
+        run: |
+          set -euo pipefail
+          printf '%s' "$MAC_PROVISIONING_PROFILE" | base64 --decode > src-tauri/embedded.provisionprofile
 
       - name: Build package
         id: build
@@ -103,20 +140,25 @@ jobs:
         with:
           name: app-store-${{ steps.build.outputs.version }}-build${{ env.BUILD_NUMBER }}
           path: ${{ steps.build.outputs.pkg }}
+          if-no-files-found: error
           retention-days: 30
 
       - name: Upload to App Store Connect
+        if: env.UPLOAD_TO_ASC == 'true'
         env:
           ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
           ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
           ASC_PRIVATE_KEY: ${{ secrets.ASC_PRIVATE_KEY }}
           PKG: ${{ steps.build.outputs.pkg }}
         run: |
+          set -euo pipefail
+          umask 077
           mkdir -p ~/.appstoreconnect/private_keys
           printf '%s' "$ASC_PRIVATE_KEY" > ~/.appstoreconnect/private_keys/"AuthKey_$ASC_KEY_ID.p8"
           xcrun altool --upload-app -t macos -f "$PKG" --apiKey "$ASC_KEY_ID" --apiIssuer "$ASC_ISSUER_ID"
 
       - name: Tag the uploaded commit
+        if: env.UPLOAD_TO_ASC == 'true'
         env:
           TAG: appstore/${{ steps.build.outputs.version }}-build${{ env.BUILD_NUMBER }}
         run: |
@@ -125,6 +167,9 @@ jobs:
 
       - name: Clean up
         if: always()
+        env:
+          ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
         run: |
           [ -n "${KEYCHAIN:-}" ] && security delete-keychain "$KEYCHAIN" || true
-          rm -f src-tauri/embedded.provisionprofile ~/.appstoreconnect/private_keys/AuthKey_*.p8
+          rm -f "$RUNNER_TEMP/cert.p12" src-tauri/embedded.provisionprofile
+          [ -z "${ASC_KEY_ID:-}" ] || rm -f "$HOME/.appstoreconnect/private_keys/AuthKey_$ASC_KEY_ID.p8"
