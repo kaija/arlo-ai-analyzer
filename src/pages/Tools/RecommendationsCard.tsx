@@ -1,7 +1,9 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
+import { invoke } from "@tauri-apps/api/core";
 import { fixPrompt, fixSnippet, type Recommendation, type ToolAnalysis } from "../../lib/tool-usage";
 import { fmtTokens } from "../../lib/format";
+import type { InputSavingsRate } from "../../lib/savings-estimate";
 import { Badge } from "../../primitives/Badge";
 
 const SHOWN_ITEMS = 8;
@@ -15,20 +17,38 @@ const REPLY_LANGUAGE: Record<string, string> = {
 
 type Copied = "snippet" | "prompt" | null;
 
-export function RecommendationsCard({ analysis: a }: { analysis: ToolAnalysis }) {
+interface RecommendationsCardProps {
+  analysis: ToolAnalysis;
+  savingsRate: InputSavingsRate | null;
+  claudeCliAvailable: boolean;
+  projects: string[];
+}
+
+export function RecommendationsCard({ analysis: a, savingsRate, claudeCliAvailable, projects }: RecommendationsCardProps) {
   const { t } = useTranslation();
+  const [selectedProject, setSelectedProject] = useState(projects[0] ?? "");
+  const project = projects.includes(selectedProject) ? selectedProject : projects[0] ?? "";
   return (
     <div className="card insight-card">
       <div className="ins-eyebrow">
         <span>{t("tools.recs.title")}</span>
       </div>
+      {claudeCliAvailable && project && a.recommendations.length > 0 && (
+        <div className="rec-cli-target">
+          <label htmlFor="rec-cli-project">{t("tools.recs.runProject")}</label>
+          <select id="rec-cli-project" value={project} onChange={(event) => setSelectedProject(event.target.value)}>
+            {projects.map((path) => <option key={path} value={path}>{path}</option>)}
+          </select>
+          <span>{t("tools.recs.runHint")}</span>
+        </div>
+      )}
       {a.recommendations.length === 0 ? (
         <div className="ins-line">{t("tools.recs.none")}</div>
       ) : (
         <ul className="rec-list">
           {a.recommendations.map((rec) => (
-            // Keyed by tool too, so one CLI's expanded item doesn't stay open for the other.
-            <RecommendationItem key={`${a.tool}:${rec.kind}`} rec={rec} analysis={a} />
+            // Reset item state when the user switches tools or target projects.
+            <RecommendationItem key={`${a.tool}:${project}:${rec.kind}`} rec={rec} analysis={a} savingsRate={savingsRate} project={claudeCliAvailable ? project : ""} />
           ))}
         </ul>
       )}
@@ -36,13 +56,16 @@ export function RecommendationsCard({ analysis: a }: { analysis: ToolAnalysis })
   );
 }
 
-function RecommendationItem({ rec, analysis: a }: { rec: Recommendation; analysis: ToolAnalysis }) {
+function RecommendationItem({ rec, analysis: a, savingsRate, project }: { rec: Recommendation; analysis: ToolAnalysis; savingsRate: InputSavingsRate | null; project: string }) {
   const { t, i18n } = useTranslation();
   // A few pieces of advice differ for Codex (no name-only skills, for one).
   const codexBody = `tools.recs.${rec.kind}.bodyCodex`;
   const bodyKey = a.tool === "codex_cli" && i18n.exists(codexBody) ? codexBody : `tools.recs.${rec.kind}.body`;
   const [open, setOpen] = useState(false);
   const [copied, setCopied] = useState<Copied>(null);
+  const [launching, setLaunching] = useState(false);
+  const [launched, setLaunched] = useState(false);
+  const [launchError, setLaunchError] = useState<string | null>(null);
   const snippet = fixSnippet(a.tool, rec);
 
   // Numbers read as tokens in the message are formatted like tokens.
@@ -55,17 +78,18 @@ function RecommendationItem({ rec, analysis: a }: { rec: Recommendation; analysi
     memoryFile: a.tool === "codex_cli" ? "AGENTS.md" : "CLAUDE.md",
   };
 
+  const prompt = () => {
+    // The agent reads the finding in English whatever the UI language is.
+    const en = i18n.getFixedT("en");
+    return fixPrompt(a, rec, {
+      title: en(`tools.recs.${rec.kind}.title`, values),
+      body: en(bodyKey, values),
+      replyLanguage: REPLY_LANGUAGE[i18n.language] ?? "English",
+    });
+  };
+
   const copy = async (what: Exclude<Copied, null>) => {
-    let text = snippet;
-    if (what === "prompt") {
-      // The agent reads the finding in English whatever the UI language is.
-      const en = i18n.getFixedT("en");
-      text = fixPrompt(a, rec, {
-        title: en(`tools.recs.${rec.kind}.title`, values),
-        body: en(bodyKey, values),
-        replyLanguage: REPLY_LANGUAGE[i18n.language] ?? "English",
-      });
-    }
+    const text = what === "prompt" ? prompt() : snippet;
     if (!text) return;
     try {
       await navigator.clipboard.writeText(text);
@@ -73,6 +97,21 @@ function RecommendationItem({ rec, analysis: a }: { rec: Recommendation; analysi
       setTimeout(() => setCopied(null), 1500);
     } catch {
       // Clipboard unavailable; the snippet is still selectable.
+    }
+  };
+
+  const runInClaude = async () => {
+    if (!project) return;
+    setLaunching(true);
+    setLaunched(false);
+    setLaunchError(null);
+    try {
+      await invoke("launch_claude_prompt", { project, prompt: prompt() });
+      setLaunched(true);
+    } catch (error) {
+      setLaunchError(String(error));
+    } finally {
+      setLaunching(false);
     }
   };
 
@@ -104,6 +143,12 @@ function RecommendationItem({ rec, analysis: a }: { rec: Recommendation; analysi
             total: fmtTokens(rec.tokensPerRequest * a.requests),
             requests: a.requests.toLocaleString(),
           })}
+          {savingsRate && ` ${t("tools.recs.savesCost", {
+            cost: new Intl.NumberFormat(i18n.language, { style: "currency", currency: "USD", maximumFractionDigits: 2 }).format(
+              rec.tokensPerRequest * a.requests * savingsRate.usdPerMillion / 1_000_000,
+            ),
+            model: savingsRate.model,
+          })}`}
         </div>
       )}
       <div className="rec-actions">
@@ -115,12 +160,19 @@ function RecommendationItem({ rec, analysis: a }: { rec: Recommendation; analysi
         >
           {copied === "prompt" ? t("tools.recs.promptCopied") : t("tools.recs.copyPrompt")}
         </button>
+        {project && (
+          <button type="button" className="rec-toggle" onClick={() => void runInClaude()} disabled={launching}>
+            {launching ? t("tools.recs.openingClaude") : t("tools.recs.runClaude")}
+          </button>
+        )}
         {snippet && (
           <button type="button" className="rec-toggle" aria-expanded={open} onClick={() => setOpen((o) => !o)}>
             {open ? t("tools.recs.hide") : t("tools.recs.howTo")}
           </button>
         )}
       </div>
+      {launched && <p className="rec-launch-status" role="status">{t("tools.recs.openedClaude")}</p>}
+      {launchError && <p className="rec-launch-error" role="alert">{t("tools.recs.launchFailed", { error: launchError })}</p>}
       {snippet && open && (
         <div className="rec-snippet">
           <pre>{snippet}</pre>
