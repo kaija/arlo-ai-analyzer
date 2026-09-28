@@ -188,7 +188,7 @@ fn latest_logged_limits(sessions: &Path) -> Option<LoggedLimits> {
         .into_iter()
         .filter_map(|path| Some((fs::metadata(&path).ok()?.modified().ok()?, path)))
         .collect();
-    files.sort_by(|a, b| b.0.cmp(&a.0));
+    files.sort_by_key(|a| std::cmp::Reverse(a.0));
     files.into_iter().take(RECENT_ROLLOUTS).find_map(|(_, path)| last_limits_in(&path))
 }
 
