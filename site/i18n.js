@@ -15,14 +15,14 @@
   var DICT = {
     'zh-Hant': {
       'meta.title': 'Arlo AI Analyzer — 看清你的 AI 寫程式花了多少 token',
-      'meta.description': '本機優先的 Mac App，把 Claude Code 與 Codex CLI 的紀錄整理成 token、費用與 context 報表。免費、開源，你的 session 永遠不會離開你的 Mac。',
+      'meta.description': '本機優先的 Mac App，把 Claude Code 與 Codex CLI 的紀錄整理成 token、費用與 context 報表。原始碼開放，你的 session 永遠不會離開你的 Mac。',
 
       'nav.features': '功能',
       'nav.privacy': '隱私',
       'nav.language': '選擇語言',
       'nav.toggle': '開關選單',
 
-      'hero.badge': '已在 Mac App Store 上架 · 免費且開源',
+      'hero.badge': '已在 Mac App Store 上架 · 原始碼開放',
       'hero.title': '看清你的 AI<br/>寫程式花了多少。',
       'hero.subtitle': 'Arlo AI Analyzer 讀取你 Mac 上既有的 Claude Code 與 Codex CLI 紀錄，整理成 token、費用與 context 報表 — 依 session、依模型、依日期。資料完全不離開你的電腦。',
       'hero.ctaGithub': '在 GitHub 上查看',
@@ -95,14 +95,14 @@
 
     ja: {
       'meta.title': 'Arlo AI Analyzer — AI コーディングのトークンの行き先を見える化',
-      'meta.description': 'Claude Code と Codex CLI のログから、トークン・コスト・コンテキストのレポートを作るローカル優先の Mac アプリ。無料・オープンソース。セッションが Mac の外に出ることはありません。',
+      'meta.description': 'Claude Code と Codex CLI のログから、トークン・コスト・コンテキストのレポートを作るローカル優先の Mac アプリ。オープンソース。セッションが Mac の外に出ることはありません。',
 
       'nav.features': '機能',
       'nav.privacy': 'プライバシー',
       'nav.language': '言語を選択',
       'nav.toggle': 'メニューを開閉',
 
-      'hero.badge': 'Mac App Store で配信中 · 無料・オープンソース',
+      'hero.badge': 'Mac App Store で配信中 · オープンソース',
       'hero.title': 'AI コーディングの<br/>トークン、どこへ消えた？',
       'hero.subtitle': 'Arlo AI Analyzer は、Mac にすでにある Claude Code と Codex CLI のログを読み込み、トークン・コスト・コンテキストのレポートにまとめます。セッション別、モデル別、日別に。データはマシンの外に出ません。',
       'hero.ctaGithub': 'GitHub で見る',
