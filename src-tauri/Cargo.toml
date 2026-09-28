@@ -1,6 +1,6 @@
 [package]
 name = "ai-analyzer"
-version = "1.0.3"
+version = "1.0.4"
 description = "Analyze local Claude Code and Codex usage"
 authors = ["Chang KaiChieh"]
 edition = "2021"

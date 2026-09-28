@@ -6,6 +6,20 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
+## [1.0.4] - 2026-09-28
+
+### Added
+
+- **Claude Code insights.** Generate Claude Code's `/insights` report with your own CLI, preview
+  the report in Arlo, and open the full HTML report.
+- **Live Claude context.** The Tools page reads Claude Code's `/context` breakdown for a project
+  and can open a recommendation in the user's Claude CLI.
+
+### Fixed
+
+- The full Claude insights report now opens after its file path is verified by the desktop app.
+- Tool table layout and page scrolling remain usable with long content.
+
 ## [1.0.3] - 2026-09-26
 
 ### Added
@@ -98,6 +112,7 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 First App Store release: token and cost reports for Claude Code and Codex CLI, read from local logs,
 with a dashboard, session details, charts, and English / 繁體中文 / 日本語 UI.
 
+[1.0.4]: https://github.com/kaija/arlo-ai-analyzer/compare/v1.0.3...v1.0.4
 [1.0.3]: https://github.com/kaija/arlo-ai-analyzer/compare/v1.0.2...v1.0.3
 [1.0.2]: https://github.com/kaija/arlo-ai-analyzer/compare/v1.0.1...v1.0.2
 [1.0.1]: https://github.com/kaija/arlo-ai-analyzer/compare/0a3daf5...v1.0.1
