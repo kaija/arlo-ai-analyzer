@@ -70,6 +70,7 @@
 .claude-insights-run:disabled { cursor: not-allowed; opacity: .55; }
 .claude-insights-spinner { width: 13px; height: 13px; border: 2px solid #ffffff80; border-top-color: #fff; border-radius: 50%; animation: claude-insights-spin .75s linear infinite; }
 @keyframes claude-insights-spin { to { transform: rotate(360deg); } }
+.claude-insights-manual { margin: 0 28px 22px; }
 .claude-insights-message, .claude-insights-error { margin: 0 28px 22px; padding: 10px 13px; border-radius: 8px; background: var(--accent-wash); color: var(--muted); font-size: 12px; line-height: 1.5; }
 .claude-insights-error { color: var(--critical); background: var(--critical-wash); }
 .claude-insights-empty { display: flex; align-items: center; gap: 16px; margin: 0 28px 28px; padding: 18px 20px; border: 1px dashed var(--accent-ring); border-radius: 12px; background: var(--surface); }
@@ -87,7 +88,7 @@
   .claude-insights-copy { flex-basis: calc(100% - 52px); }
   .claude-insights h2 { font-size: 18px; }
   .claude-insights-actions { width: 100%; justify-content: flex-start; padding-left: 52px; }
-  .claude-insights-message, .claude-insights-error, .claude-insights-empty { margin-left: 20px; margin-right: 20px; }
+  .claude-insights-message, .claude-insights-error, .claude-insights-empty, .claude-insights-manual { margin-left: 20px; margin-right: 20px; }
   .claude-insights-frame { height: 70vh; }
 }
 @media (max-width: 920px) {

@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { invoke } from "@tauri-apps/api/core";
 import type { DataAccess } from "../../types";
+import { CliSteps } from "../../components/CliSteps";
 
 interface ClaudeInsightsReport {
   html: string;
@@ -26,7 +27,8 @@ export function ClaudeInsightsCard({ access }: { access: DataAccess | null }) {
   const [error, setError] = useState<string | null>(null);
   const [errorAction, setErrorAction] = useState<"load" | "generate" | "open">("load");
   const [open, setOpen] = useState(false);
-  const enabled = !!access && !access.sample && !access.sandboxed;
+  const sandboxed = !!access?.sandboxed;
+  const enabled = !!access && !access.sample && !sandboxed;
 
   useEffect(() => {
     if (!enabled) {
@@ -87,16 +89,27 @@ export function ClaudeInsightsCard({ access }: { access: DataAccess | null }) {
             {date && <span>{t("claudeInsights.updated", { date })}</span>}
           </div>
         </div>
-        <div className="claude-insights-actions">
+        {!sandboxed && <div className="claude-insights-actions">
           <button className="btn claude-insights-run" type="button" onClick={() => void generate()} disabled={!enabled || !available || generating || loading}>
             {generating ? <span className="claude-insights-spinner" aria-hidden="true" /> : <span aria-hidden="true">✦</span>}
             {generating ? t("claudeInsights.generating") : report ? t("claudeInsights.regenerate") : t("claudeInsights.generate")}
           </button>
           {report && <button className="btn btn-secondary" type="button" onClick={() => void openFullReport()}>{t("claudeInsights.openReport")} ↗</button>}
-        </div>
+        </div>}
       </div>
 
-      {!enabled && !loading && <p className="claude-insights-message">{t("claudeInsights.unavailable")}</p>}
+      {sandboxed && (
+        <div className="claude-insights-manual">
+          <CliSteps
+            intro={t("claudeInsights.manual.intro")}
+            steps={[
+              { text: t("claudeInsights.manual.run"), command: "claude /insights" },
+              { text: t("claudeInsights.manual.open"), command: "open ~/.claude/usage-data" },
+            ]}
+          />
+        </div>
+      )}
+      {!enabled && !sandboxed && !loading && <p className="claude-insights-message">{t("claudeInsights.sampleData")}</p>}
       {enabled && !available && !loading && !error && <p className="claude-insights-message">{t("claudeInsights.installCli")}</p>}
       {loading && <p className="claude-insights-message">{t("claudeInsights.loading")}</p>}
       {generating && <p className="claude-insights-message" role="status">{t("claudeInsights.waitHint")}</p>}

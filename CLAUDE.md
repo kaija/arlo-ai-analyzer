@@ -19,6 +19,7 @@ make test           # cargo test --workspace + pnpm vitest --run
 make lint           # clippy -D warnings + tsc on both tsconfigs
 make release        # optimized bundle
 make appstore BUILD=<n>   # signed Mac App Store .pkg (scripts/build-appstore.sh)
+make dmg            # notarized direct-download .dmg, not sandboxed (scripts/build-dmg.sh)
 ```
 
 **Releasing to the App Store** is automatic: merging into `release` runs
@@ -27,6 +28,13 @@ App Store Connect, then an `appstore/<version>-build<n>` tag. Bump `version` in 
 before merging a new release. The build number is the run number + `vars.BUILD_NUMBER_OFFSET`
 (`app-store` environment, which also holds the signing and API-key secrets listed in the workflow);
 after an upload by hand, raise the offset past it. Submitting for review stays manual.
+
+The same merge also runs `.github/workflows/direct-download.yml`: `scripts/build-dmg.sh` signs with
+Developer ID (`DEVELOPER_ID_CERT_P12` on the same environment), Tauri notarizes the `.app` with the ASC
+key, the script notarizes and staples the `.dmg`, and it is attached to the GitHub Release
+`v<version>` (replaced on a re-run). That build uses the plain `Entitlements.plist` — no sandbox — so
+it is the one where the Claude CLI features (live insights, `/context`, Run in Claude Code) work; the
+script fails if a sandbox entitlement ever reaches it.
 
 Single test:
 - Rust: `cargo test -p usage-core dedupe` (substring match on test name)
@@ -107,8 +115,10 @@ can window them. Analysis, tiers and recommendations are front-end (`src/lib/too
   in that project's directory with a minimal budget cap. It only accepts a zero-turn, zero-token
   result. If Claude changes the inner text layout, the page shows its complete original output;
   if the CLI or JSON usage check fails, historical session totals and recommendations remain.
-  The App Store sandbox cannot give the external CLI access to its configuration, so this live
-  snapshot is unavailable there; the Tools page explains that and keeps the historical view.
+  The App Store sandbox cannot give the external CLI access to its configuration (a child process
+  inherits the sandbox, and Claude Code's Keychain sign-in is outside its access group), so every
+  CLI feature is hidden there — `/context`, `/insights`, Run in Claude Code — and replaced by
+  `CliSteps` (`src/components/`): the Terminal commands for the user to run themselves.
 
 ### Sandbox and folder access (App Store build)
 

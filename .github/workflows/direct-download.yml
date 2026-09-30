@@ -1,0 +1,145 @@
+# Builds the direct-download .dmg (Developer ID, notarized, not sandboxed) and
+# attaches it to the GitHub Release v<version>. Runs next to app-store.yml on
+# pushes to `release`; manual runs build only unless publish is selected.
+#
+# Setup (on the `app-store` environment, which already holds the ASC key):
+#   DEVELOPER_ID_CERT_P12 / DEVELOPER_ID_CERT_PASSWORD  Developer ID Application, .p12 as base64
+#   ASC_KEY_ID / ASC_ISSUER_ID / ASC_PRIVATE_KEY        App Store Connect API key, used by notarytool
+#
+# Re-running for a version that already has a release replaces its .dmg.
+name: Direct download
+
+on:
+  push:
+    branches: [release]
+  workflow_dispatch:
+    inputs:
+      publish:
+        description: Attach the .dmg to the GitHub Release after building
+        type: boolean
+        default: false
+
+permissions:
+  contents: write # the v<version> release and tag
+
+concurrency:
+  group: direct-download
+  cancel-in-progress: false
+
+jobs:
+  dmg:
+    runs-on: macos-15
+    environment: app-store
+    timeout-minutes: 90
+    env:
+      PUBLISH: ${{ github.event_name == 'push' || inputs.publish }}
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Check signing and notarization settings
+        env:
+          DEVELOPER_ID_CERT_P12: ${{ secrets.DEVELOPER_ID_CERT_P12 }}
+          DEVELOPER_ID_CERT_PASSWORD: ${{ secrets.DEVELOPER_ID_CERT_PASSWORD }}
+          ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+          ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+          ASC_PRIVATE_KEY: ${{ secrets.ASC_PRIVATE_KEY }}
+        run: |
+          set -euo pipefail
+          missing=0
+          for name in DEVELOPER_ID_CERT_P12 DEVELOPER_ID_CERT_PASSWORD ASC_KEY_ID ASC_ISSUER_ID ASC_PRIVATE_KEY; do
+            if [[ -z "${!name}" ]]; then
+              echo "::error title=Missing secret::$name must be set on the app-store environment"
+              missing=1
+            fi
+          done
+          exit "$missing"
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: pnpm
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-apple-darwin,x86_64-apple-darwin
+          components: clippy
+      - uses: Swatinem/rust-cache@v2
+
+      - run: pnpm install --frozen-lockfile
+
+      - run: make lint
+      - run: make test
+
+      - name: Import signing certificate
+        env:
+          DEVELOPER_ID_CERT_P12: ${{ secrets.DEVELOPER_ID_CERT_P12 }}
+          DEVELOPER_ID_CERT_PASSWORD: ${{ secrets.DEVELOPER_ID_CERT_PASSWORD }}
+        run: |
+          set -euo pipefail
+          KEYCHAIN="$RUNNER_TEMP/signing.keychain-db"
+          echo "KEYCHAIN=$KEYCHAIN" >> "$GITHUB_ENV"
+          KEYCHAIN_PASSWORD=$(openssl rand -hex 24)
+          security create-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN"
+          security set-keychain-settings -lut 21600 "$KEYCHAIN"
+          security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN"
+
+          printf '%s' "$DEVELOPER_ID_CERT_P12" | base64 --decode > "$RUNNER_TEMP/cert.p12"
+          security import "$RUNNER_TEMP/cert.p12" -k "$KEYCHAIN" -P "$DEVELOPER_ID_CERT_PASSWORD" -f pkcs12 \
+            -T /usr/bin/codesign -T /usr/bin/security
+          rm -f "$RUNNER_TEMP/cert.p12"
+
+          # Developer ID certificates are issued under the G2 intermediate.
+          curl -fsSL https://www.apple.com/certificateauthority/DeveloperIDG2CA.cer -o "$RUNNER_TEMP/devid.cer"
+          security import "$RUNNER_TEMP/devid.cer" -k "$KEYCHAIN" || true
+
+          security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "$KEYCHAIN_PASSWORD" "$KEYCHAIN" > /dev/null
+          security list-keychains -d user -s "$KEYCHAIN" login.keychain-db
+          security find-identity -v -p codesigning "$KEYCHAIN"
+
+      - name: Install notarization key
+        env:
+          ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+          ASC_PRIVATE_KEY: ${{ secrets.ASC_PRIVATE_KEY }}
+        run: |
+          set -euo pipefail
+          umask 077
+          KEY_PATH="$RUNNER_TEMP/AuthKey_$ASC_KEY_ID.p8"
+          printf '%s' "$ASC_PRIVATE_KEY" > "$KEY_PATH"
+          echo "APPLE_API_KEY_PATH=$KEY_PATH" >> "$GITHUB_ENV"
+
+      - name: Build disk image
+        id: build
+        env:
+          APPLE_API_KEY: ${{ secrets.ASC_KEY_ID }}
+          APPLE_API_ISSUER: ${{ secrets.ASC_ISSUER_ID }}
+        run: scripts/build-dmg.sh dist-dmg
+
+      - uses: actions/upload-artifact@v5
+        with:
+          name: direct-download-${{ steps.build.outputs.version }}
+          path: ${{ steps.build.outputs.dmg }}
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Publish GitHub Release
+        if: env.PUBLISH == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: v${{ steps.build.outputs.version }}
+          DMG: ${{ steps.build.outputs.dmg }}
+        run: |
+          set -euo pipefail
+          if gh release view "$TAG" > /dev/null 2>&1; then
+            gh release upload "$TAG" "$DMG" --clobber
+          else
+            gh release create "$TAG" "$DMG" --target "$GITHUB_SHA" --title "Arlo AI Analyzer ${TAG#v}" \
+              --notes "Direct-download build for macOS (Apple silicon and Intel), notarized by Apple. Unlike the Mac App Store version it isn't sandboxed, so it can run your Claude Code CLI for live insights and /context."
+          fi
+
+      - name: Clean up
+        if: always()
+        run: |
+          [ -n "${KEYCHAIN:-}" ] && security delete-keychain "$KEYCHAIN" || true
+          rm -f "$RUNNER_TEMP/cert.p12" "${APPLE_API_KEY_PATH:-/nonexistent}"

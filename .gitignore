@@ -38,3 +38,4 @@ _site/
 
 # Mac App Store packages (scripts/build-appstore.sh)
 dist-appstore/
+dist-dmg/

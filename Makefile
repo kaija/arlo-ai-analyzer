@@ -1,4 +1,4 @@
-.PHONY: dev build release appstore install clean lint test help site update-openrouter-pricing
+.PHONY: dev build release appstore dmg install clean lint test help site update-openrouter-pricing
 
 # Default target
 .DEFAULT_GOAL := help
@@ -53,6 +53,10 @@ lint-frontend:
 appstore:
 	@test -n "$(BUILD)" || (echo "usage: make appstore BUILD=<build number>" && exit 1)
 	scripts/build-appstore.sh $(BUILD)
+
+## dmg: Build the notarized direct-download .dmg into dist-dmg/ (Developer ID, not sandboxed; SKIP_NOTARIZE=1 to skip notarization)
+dmg:
+	scripts/build-dmg.sh
 
 ## update-openrouter-pricing: Re-fetch OpenRouter model list and regenerate src/lib/openrouter-pricing.ts (run before each release)
 update-openrouter-pricing:

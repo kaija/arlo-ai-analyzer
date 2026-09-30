@@ -13,11 +13,20 @@
     "emptyBody": "使用 Claude Code 內建的 /insights 指令產生個人診斷報告。",
     "loading": "正在尋找現有報告…",
     "waitHint": "Claude 正在分析你的工作階段，可能需要幾分鐘，並會使用你的 Claude 方案額度。",
-    "unavailable": "範例資料或沙盒版本無法使用即時 Claude 洞察。",
+    "sampleData": "檢視範例資料時無法使用 Claude Code insights。",
+    "manual": {
+      "intro": "App Store 版本無法替你執行 Claude Code，請自行在「終端機」執行：",
+      "run": "產生報告。這會使用你的 Claude 方案額度，可能需要幾分鐘。",
+      "open": "完成後，打開存放報告的資料夾。"
+    },
     "installCli": "請安裝 Claude Code CLI 並登入，即可產生報告。",
     "loadFailed": "無法載入 Claude 洞察：{{error}}",
     "generateFailed": "無法產生 Claude 洞察：{{error}}",
     "openFailed": "無法開啟 Claude 洞察：{{error}}"
+  },
+  "cliSteps": {
+    "copy": "複製",
+    "copied": "已複製"
   },
   "nav": {
     "dashboard": "總覽",
@@ -295,7 +304,10 @@
       "loading": "正在讀取 Claude Code context…",
       "formatChanged": "Claude Code 的輸出格式已變更，以下顯示完整原始結果。",
       "originalOutput": "/context 原始輸出",
-      "sandboxed": "此版本無法以所需權限執行 Claude Code CLI。下方仍顯示歷史 session 的估算資料。",
+      "manual": {
+        "intro": "App Store 版本無法替你執行 Claude Code。若想查看此專案新 session 會載入哪些內容，請在「終端機」執行：",
+        "run": "在選取的專案中開啟 Claude Code，並顯示 context 分析。"
+      },
       "unavailable": "無法取得即時 context：{{error}}。下方仍顯示歷史 session 的估算資料。",
       "estimateNote": "Claude Code 將這些分類標示為估算值；它反映目前的專案設定，不代表歷史 session 或工具呼叫次數。",
       "categories": "依類別區分的用量",

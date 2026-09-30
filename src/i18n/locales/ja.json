@@ -13,11 +13,20 @@
     "emptyBody": "Claude Code 内蔵の /insights コマンドで個人レポートを生成します。",
     "loading": "既存のレポートを探しています…",
     "waitHint": "Claude がセッションを分析しています。数分かかる場合があり、Claude プランの利用枠を使用します。",
-    "unavailable": "サンプルデータまたはサンドボックス版では利用できません。",
+    "sampleData": "サンプルデータの表示中は Claude Code insights を利用できません。",
+    "manual": {
+      "intro": "App Store 版では Claude Code を代わりに実行できません。ターミナルでご自身で実行してください:",
+      "run": "レポートを生成します。Claude プランの利用枠を使い、数分かかる場合があります。",
+      "open": "完了したら、レポートが保存されたフォルダを開きます。"
+    },
     "installCli": "レポートを生成するには Claude Code CLI をインストールしてログインしてください。",
     "loadFailed": "Claude インサイトを読み込めませんでした: {{error}}",
     "generateFailed": "Claude インサイトを生成できませんでした: {{error}}",
     "openFailed": "Claude インサイトを開けませんでした: {{error}}"
+  },
+  "cliSteps": {
+    "copy": "コピー",
+    "copied": "コピーしました"
   },
   "nav": {
     "dashboard": "ダッシュボード",
@@ -295,7 +304,10 @@
       "loading": "Claude Code のコンテキストを取得中…",
       "formatChanged": "Claude Code の出力形式が変更されました。完全な元の結果を以下に表示します。",
       "originalOutput": "/context の元の出力",
-      "sandboxed": "このビルドでは Claude Code CLI を設定にアクセスできる状態で実行できません。過去のセッションの推定値は下に表示されます。",
+      "manual": {
+        "intro": "App Store 版では Claude Code を代わりに実行できません。このプロジェクトで新しいセッションが読み込む内容を確認するには、ターミナルで次を実行してください:",
+        "run": "選択したプロジェクトで Claude Code を開き、コンテキストの内訳を表示します。"
+      },
       "unavailable": "現在のコンテキストを取得できません: {{error}}。過去のセッションの推定値は下に表示されます。",
       "estimateNote": "Claude Code はこの内訳を推定値としています。現在のプロジェクト設定を示し、過去のセッションやツール呼び出し回数は示しません。",
       "categories": "カテゴリ別の使用量",

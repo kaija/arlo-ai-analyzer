@@ -13,11 +13,20 @@
     "emptyBody": "Generate a personal report with Claude Code's built-in /insights command.",
     "loading": "Looking for an existing report…",
     "waitHint": "Claude is analyzing your sessions. This may take a few minutes and use your Claude plan.",
-    "unavailable": "Live Claude insights are unavailable in sample data or the sandboxed build.",
+    "sampleData": "Claude Code insights are unavailable while viewing sample data.",
+    "manual": {
+      "intro": "The App Store version can't run Claude Code for you. Run it yourself in Terminal:",
+      "run": "Generate the report. This uses your Claude plan and may take a few minutes.",
+      "open": "When it finishes, open the folder the report is saved in."
+    },
     "installCli": "Install and sign in to Claude Code CLI to generate a report.",
     "loadFailed": "Could not load Claude insights: {{error}}",
     "generateFailed": "Could not generate Claude insights: {{error}}",
     "openFailed": "Could not open Claude insights: {{error}}"
+  },
+  "cliSteps": {
+    "copy": "Copy",
+    "copied": "Copied"
   },
   "nav": {
     "dashboard": "Dashboard",
@@ -295,7 +304,10 @@
       "loading": "Reading Claude Code context…",
       "formatChanged": "Claude Code changed the output format. Its complete result is shown below.",
       "originalOutput": "Original /context output",
-      "sandboxed": "This build cannot run the Claude Code CLI with access to its configuration. Historical session estimates are shown below.",
+      "manual": {
+        "intro": "The App Store version can't run Claude Code for you. To see what a new session in this project loads, run this in Terminal:",
+        "run": "Open Claude Code in the selected project and show its context breakdown."
+      },
       "unavailable": "Live context unavailable: {{error}}. Historical session estimates are still shown below.",
       "estimateNote": "Claude Code labels this breakdown as estimated. It describes the current project setup, not past sessions or tool call counts.",
       "categories": "Usage by category",

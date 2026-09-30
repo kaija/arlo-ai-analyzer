@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { invoke } from "@tauri-apps/api/core";
 import type { Session } from "../../types";
+import { CliSteps, shellQuote } from "../../components/CliSteps";
 
 interface ContextSection {
   title: string;
@@ -83,13 +84,20 @@ export function ClaudeContextCard({ sessions, sandboxed }: { sessions: Session[]
           <select id="claude-context-project" value={project} onChange={(event) => setProject(event.target.value)}>
             {projects.map((path) => <option key={path} value={path}>{path}</option>)}
           </select>
-          <button className="btn btn-secondary" type="button" onClick={() => setRefresh((n) => n + 1)} disabled={loading || sandboxed}>
-            {t("tools.live.refresh")}
-          </button>
+          {!sandboxed && (
+            <button className="btn btn-secondary" type="button" onClick={() => setRefresh((n) => n + 1)} disabled={loading}>
+              {t("tools.live.refresh")}
+            </button>
+          )}
         </div>
       </div>
       <div className="claude-context-content">
-        {sandboxed && <p className="claude-context-note">{t("tools.live.sandboxed")}</p>}
+        {sandboxed && (
+          <CliSteps
+            intro={t("tools.live.manual.intro")}
+            steps={[{ text: t("tools.live.manual.run"), command: `cd ${shellQuote(project)} && claude /context` }]}
+          />
+        )}
         {loading && <p className="claude-context-note">{t("tools.live.loading")}</p>}
         {error && <p className="claude-context-note">{t("tools.live.unavailable", { error })}</p>}
         {snapshot && (
