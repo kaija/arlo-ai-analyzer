@@ -183,7 +183,7 @@
   "dataAccess": {
     "connectedNoSessions": "{{tool}} folder connected — no sessions found yet.",
     "trySample": "Explore with sample data",
-    "pickerTitle": "Select your {{tool}} logs folder ({{path}})",
+    "pickerTitle": "Select your {{tool}} folder ({{path}})",
     "sampleBannerTitle": "You're viewing sample data",
     "sampleBannerBody": "These sessions are generated examples. Connect your own logs to see your real usage.",
     "exitSample": "Exit sample data",
@@ -216,6 +216,7 @@
       "none": "No Claude Code or Codex CLI installation found on this Mac.",
       "planUnknown": "Plan unknown",
       "refreshNow": "Refresh now",
+      "allowFolder": "Allow access",
       "refreshing": "Refreshing…",
       "online": {
         "label": "Check plan limits online",
@@ -263,7 +264,8 @@
       "days": "{{count}} d ago"
     },
     "issue": {
-      "credentials_unreadable": "Couldn't read this tool's sign-in. The Keychain may have refused, or — in the App Store version — the folder chosen under Logs directory doesn't include it (choose ~/.claude or ~/.codex itself).",
+      "credentials_unreadable": "Plan and limits aren't shown yet. Allow access to the tool's whole folder, not only its logs, to include them.",
+      "keychain_unreadable": "Arlo couldn't read this tool's sign-in from the macOS Keychain. If you declined the Keychain prompt, restart Arlo and choose Always Allow. Usage and cost are not affected.",
       "sign_in_expired": "The saved sign-in has expired. Run the tool once to renew it.",
       "no_usage_access": "This sign-in is a long-lived token that can't report plan limits. Sign in with /login to see them.",
       "unauthorized": "The vendor rejected the saved sign-in. Sign in to the tool again.",

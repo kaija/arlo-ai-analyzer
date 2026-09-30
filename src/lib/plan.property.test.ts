@@ -98,6 +98,7 @@ describe("issueKey", () => {
   it("every issue kind has wording in all locales", () => {
     const issues: PlanIssue[] = [
       { kind: "credentials_unreadable" },
+      { kind: "keychain_unreadable" },
       { kind: "sign_in_expired" },
       { kind: "no_usage_access" },
       { kind: "unauthorized" },
@@ -140,11 +141,13 @@ describe("planTools", () => {
         status("api_key"),
         status("signed_out"),
         status("signed_out", { kind: "credentials_unreadable" }),
+        status("signed_out", { kind: "keychain_unreadable" }),
+        status("signed_out", { kind: "unauthorized" }),
       ],
     };
     expect(planTools(report).map((t) => [t.auth, t.issue?.kind ?? null])).toEqual([
       ["subscription", null],
-      ["signed_out", "credentials_unreadable"],
+      ["signed_out", "unauthorized"],
     ]);
     expect(planTools(null)).toEqual([]);
   });

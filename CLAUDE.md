@@ -116,8 +116,7 @@ can window them. Analysis, tiers and recommendations are front-end (`src/lib/too
   result. If Claude changes the inner text layout, the page shows its complete original output;
   if the CLI or JSON usage check fails, historical session totals and recommendations remain.
   The App Store sandbox cannot give the external CLI access to its configuration (a child process
-  inherits the sandbox, and Claude Code's Keychain sign-in is outside its access group), so every
-  CLI feature is hidden there — `/context`, `/insights`, Run in Claude Code — and replaced by
+  inherits the sandbox), so every CLI feature is hidden there — `/context`, `/insights`, Run in Claude Code — and replaced by
   `CliSteps` (`src/components/`): the Terminal commands for the user to run themselves.
 
 ### Sandbox and folder access (App Store build)

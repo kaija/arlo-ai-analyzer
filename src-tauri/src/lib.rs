@@ -294,7 +294,7 @@ fn get_data_access(state: tauri::State<AppState>) -> Result<DataAccess, String> 
 async fn grant_source_access(app: AppHandle, tool: ToolKind, title: String) -> Result<DataAccess, String> {
     let tool = grantable(tool)?;
     let mut dialog = app.dialog().file().set_title(title).set_can_create_directories(false);
-    if let Some(dir) = access::default_root(tool) {
+    if let Some(dir) = access::tool_home(tool).or_else(|| access::default_root(tool)) {
         dialog = dialog.set_directory(dir);
     }
     if let Some(main) = app.get_webview_window(tray::MAIN) {

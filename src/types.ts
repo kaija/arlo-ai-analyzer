@@ -13,6 +13,12 @@ export const DEFAULT_LOG_PATHS: Partial<Record<ToolKind, string>> = {
   codex_cli: "~/.codex/sessions",
 };
 
+/** The folder the picker should be pointed at: the tool's own, so one click also covers its sign-in file. */
+export const DEFAULT_HOME_PATHS: Partial<Record<ToolKind, string>> = {
+  claude_code: "~/.claude",
+  codex_cli: "~/.codex",
+};
+
 export interface Session {
   tool: ToolKind;
   session_id: string;
@@ -299,6 +305,7 @@ export type PlanIssue =
   | {
       kind:
         | "credentials_unreadable"
+        | "keychain_unreadable"
         | "sign_in_expired"
         | "no_usage_access"
         | "unauthorized"

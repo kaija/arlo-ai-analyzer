@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useSessionsContext } from "../../context/SessionsContext";
-import { DEFAULT_LOG_PATHS, TOOL_LABELS, type SourceAccess, type ToolKind } from "../../types";
+import { DEFAULT_HOME_PATHS, DEFAULT_LOG_PATHS, TOOL_LABELS, type SourceAccess, type ToolKind } from "../../types";
 
 /** `/Users/<name>/…` → `~/…`, for display. */
 function tildify(path: string): string {
@@ -32,7 +32,7 @@ export function Onboarding() {
   const nothingFound = access !== null && sources.every((s) => !s.detected);
 
   const pickerTitle = (tool: ToolKind) =>
-    t("dataAccess.pickerTitle", { tool: TOOL_LABELS[tool], path: DEFAULT_LOG_PATHS[tool] ?? "" });
+    t("dataAccess.pickerTitle", { tool: TOOL_LABELS[tool], path: DEFAULT_HOME_PATHS[tool] ?? "" });
 
   const run = async (action: () => Promise<unknown>) => {
     setBusy(true);

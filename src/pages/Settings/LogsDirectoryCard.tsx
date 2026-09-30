@@ -2,7 +2,7 @@ import { useState, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { useSessionsContext } from "../../context/SessionsContext";
 import { Switch } from "../../primitives/Switch";
-import { DEFAULT_LOG_PATHS, TOOL_LABELS, type SourceAccess } from "../../types";
+import { DEFAULT_HOME_PATHS, DEFAULT_LOG_PATHS, TOOL_LABELS, type SourceAccess } from "../../types";
 
 // ---------------------------------------------------------------------------
 // LogsDirectoryCard
@@ -49,7 +49,7 @@ export function LogsDirectoryCard() {
         source.tool,
         t("dataAccess.pickerTitle", {
           tool: TOOL_LABELS[source.tool],
-          path: DEFAULT_LOG_PATHS[source.tool] ?? "",
+          path: DEFAULT_HOME_PATHS[source.tool] ?? "",
         }),
       ),
     );

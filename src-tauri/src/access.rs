@@ -77,6 +77,12 @@ pub fn default_root(tool: ToolKind) -> Option<PathBuf> {
     }
 }
 
+/// The tool's own folder (`~/.claude`, `~/.codex`): what the open panel starts on.
+/// Granting it covers the logs *and* the sign-in file the plan status reads.
+pub fn tool_home(tool: ToolKind) -> Option<PathBuf> {
+    default_root(tool).and_then(|root| root.parent().map(Path::to_path_buf))
+}
+
 /// Subdirectories of a picked folder that hold the logs, most specific first,
 /// so the user can pick the log folder itself, its tool folder, or home.
 fn log_subdirs(tool: ToolKind) -> &'static [&'static str] {

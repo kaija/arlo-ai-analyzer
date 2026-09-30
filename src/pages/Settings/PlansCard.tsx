@@ -1,9 +1,11 @@
+import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Switch } from "../../primitives/Switch";
 import { usePlanStatus } from "../../hooks/usePlanStatus";
 import { useNow } from "../../hooks/useNow";
-import { agoPhrase, issueKey, type Phrase } from "../../lib/plan";
-import { TOOL_LABELS, type CredentialSource, type PlanStatus } from "../../types";
+import { agoPhrase, isQuietIssue, issueKey, type Phrase } from "../../lib/plan";
+import { useSessionsContext } from "../../context/SessionsContext";
+import { DEFAULT_HOME_PATHS, TOOL_LABELS, type CredentialSource, type PlanStatus } from "../../types";
 
 // ---------------------------------------------------------------------------
 // PlansCard — "Plans & limits"
@@ -82,6 +84,21 @@ function ToolRow({ status }: { status: PlanStatus }) {
   const { t } = useTranslation();
   const summary = [t(`plans.auth.${status.auth}`)];
   if (status.auth === "subscription") summary.push(status.plan ?? t("plans.settings.planUnknown"));
+  const { grantAccess } = useSessionsContext();
+  const [busy, setBusy] = useState(false);
+  const allow = async () => {
+    setBusy(true);
+    try {
+      await grantAccess(
+        status.tool,
+        t("dataAccess.pickerTitle", { tool: TOOL_LABELS[status.tool], path: DEFAULT_HOME_PATHS[status.tool] ?? "" }),
+      );
+    } catch {
+      // A cancelled panel leaves the row as it was.
+    } finally {
+      setBusy(false);
+    }
+  };
   const account = [status.account, status.organization].filter(Boolean).join(" · ");
 
   return (
@@ -95,11 +112,19 @@ function ToolRow({ status }: { status: PlanStatus }) {
         {account && <div className="hint">{account}</div>}
         {status.credential_source && <div className="hint">{sourceText(t, status.credential_source)}</div>}
         {status.issue && (
-          <div className="hint plan-issue" title={status.issue.kind === "failed" ? status.issue.detail : undefined}>
+          <div
+            className={`hint plan-issue${isQuietIssue(status.issue) ? " quiet" : ""}`}
+            title={status.issue.kind === "failed" ? status.issue.detail : undefined}
+          >
             {t(issueKey(status.issue))}
           </div>
         )}
       </div>
+      {status.issue?.kind === "credentials_unreadable" && (
+        <button type="button" className="btn btn-secondary btn-small" disabled={busy} onClick={() => void allow()}>
+          {t("plans.settings.allowFolder")}
+        </button>
+      )}
     </div>
   );
 }

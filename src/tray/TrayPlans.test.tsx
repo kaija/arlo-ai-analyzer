@@ -73,17 +73,25 @@ describe("TrayPlans", () => {
     expect(screen.queryByText("Plan limits")).not.toBeInTheDocument();
   });
 
-  it("names a tool whose sign-in couldn't be read, and why", () => {
+  it("keeps quiet about a sign-in it can't read; that is explained in Settings", () => {
+    const { container } = render(
+      <TrayPlans
+        report={report([status({ tool: "claude_code", auth: "signed_out", plan: null, issue: { kind: "keychain_unreadable" } })])}
+        now={NOW}
+      />,
+    );
+    expect(container).toBeEmptyDOMElement();
+  });
+
+  it("still names a tool whose live check failed", () => {
     render(
       <TrayPlans
-        report={report([status({ tool: "claude_code", auth: "signed_out", plan: null, issue: { kind: "credentials_unreadable" } })])}
+        report={report([status({ tool: "claude_code", auth: "signed_out", plan: null, issue: { kind: "unauthorized" } })])}
         now={NOW}
       />,
     );
     const block = screen.getByTestId("tray-plan-claude_code");
-    expect(within(block).getByText("Signed out")).toBeInTheDocument();
-    expect(within(block).getByText(/Couldn't read this tool's sign-in/)).toBeInTheDocument();
-    expect(within(block).queryByText(/Turn on online checks/)).not.toBeInTheDocument();
+    expect(within(block).getByText(/vendor rejected/)).toBeInTheDocument();
   });
 
   it("says why a plan has no limits yet", () => {

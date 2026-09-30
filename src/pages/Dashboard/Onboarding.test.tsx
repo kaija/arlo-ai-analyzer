@@ -54,8 +54,8 @@ describe("Onboarding", () => {
     await userEvent.click(screen.getByRole("button", { name: "Allow access to both" }));
 
     expect(grantAccess).toHaveBeenCalledTimes(2);
-    expect(grantAccess).toHaveBeenNthCalledWith(1, "claude_code", expect.stringContaining("~/.claude/projects"));
-    expect(grantAccess).toHaveBeenNthCalledWith(2, "codex_cli", expect.stringContaining("~/.codex/sessions"));
+    expect(grantAccess).toHaveBeenNthCalledWith(1, "claude_code", expect.stringContaining("~/.claude"));
+    expect(grantAccess).toHaveBeenNthCalledWith(2, "codex_cli", expect.stringContaining("~/.codex"));
   });
 
   it("stops asking once the user cancels a picker", async () => {

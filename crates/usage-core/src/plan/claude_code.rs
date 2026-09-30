@@ -59,6 +59,8 @@ enum Credentials {
     Found { json: Value, source: CredentialSource },
     Missing,
     Unreadable,
+    /// The keychain item exists (or may) but the read failed.
+    KeychainUnreadable,
 }
 
 impl ClaudeCodePlan {
@@ -86,7 +88,7 @@ impl ClaudeCodePlan {
                 None => Credentials::Unreadable,
             },
             Ok(None) => Credentials::Missing,
-            Err(_) => Credentials::Unreadable,
+            Err(_) => Credentials::KeychainUnreadable,
         }
     }
 
@@ -144,6 +146,7 @@ impl PlanProvider for ClaudeCodePlan {
                 }
             }
             Credentials::Unreadable => status.issue = Some(PlanIssue::CredentialsUnreadable),
+            Credentials::KeychainUnreadable => status.issue = Some(PlanIssue::KeychainUnreadable),
             Credentials::Missing => {}
         }
 
@@ -363,7 +366,7 @@ mod tests {
         let (_home, dir) = home_with(None, None);
         let status = ClaudeCodePlan::with_keychain(&dir, denied).detect(now()).unwrap().status;
         assert_eq!(status.auth, AuthKind::SignedOut);
-        assert_eq!(status.issue, Some(PlanIssue::CredentialsUnreadable));
+        assert_eq!(status.issue, Some(PlanIssue::KeychainUnreadable));
     }
 
     #[test]

@@ -183,7 +183,7 @@
   "dataAccess": {
     "connectedNoSessions": "{{tool}} のフォルダは接続済みですが、セッションはまだ見つかりません。",
     "trySample": "サンプルデータで試す",
-    "pickerTitle": "{{tool}} のログフォルダを選択（{{path}}）",
+    "pickerTitle": "{{tool}} のフォルダを選択（{{path}}）",
     "sampleBannerTitle": "サンプルデータを表示中",
     "sampleBannerBody": "これらのセッションは生成された例です。ご自身のログを接続すると実際の使用量を確認できます。",
     "exitSample": "サンプルデータを終了",
@@ -216,6 +216,7 @@
       "none": "この Mac に Claude Code または Codex CLI が見つかりません。",
       "planUnknown": "プラン不明",
       "refreshNow": "今すぐ更新",
+      "allowFolder": "アクセスを許可",
       "refreshing": "更新中…",
       "online": {
         "label": "プランの上限をオンラインで確認",
@@ -263,7 +264,8 @@
       "days": "{{count}} 日前"
     },
     "issue": {
-      "credentials_unreadable": "このツールのサインイン情報を読み取れませんでした。キーチェーンに拒否されたか、App Store 版では「ログディレクトリ」で選んだフォルダに含まれていない可能性があります（~/.claude または ~/.codex 自体を選んでください）。",
+      "credentials_unreadable": "プランと上限はまだ表示されていません。ログだけでなく、ツールのフォルダ全体へのアクセスを許可すると表示されます。",
+      "keychain_unreadable": "Arlo はこのツールのサインイン情報を macOS のキーチェーンから読み取れませんでした。キーチェーンの許可を拒否した場合は、Arlo を再起動して「常に許可」を選んでください。使用量とコストには影響しません。",
       "sign_in_expired": "保存されたサインインの有効期限が切れています。ツールを一度実行すると更新されます。",
       "no_usage_access": "このサインインは長期トークンのため、プランの上限を取得できません。/login でサインインすると表示されます。",
       "unauthorized": "ベンダーが保存されたサインインを拒否しました。ツールに再度サインインしてください。",

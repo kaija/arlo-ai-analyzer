@@ -138,8 +138,11 @@ pub struct QuotaWindow {
 #[serde(tag = "kind", content = "detail", rename_all = "snake_case")]
 pub enum PlanIssue {
     /// The tool keeps a sign-in here, but it couldn't be read (the sandboxed
-    /// build without access to the folder, a keychain refusal).
+    /// build without access to the folder, a malformed file).
     CredentialsUnreadable,
+    /// The sign-in lives in the macOS keychain and the read failed: refused,
+    /// locked, or — in the sandboxed build — out of reach altogether.
+    KeychainUnreadable,
     /// The saved access token has expired. The tool renews it the next time
     /// it runs.
     SignInExpired,

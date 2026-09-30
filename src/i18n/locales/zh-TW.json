@@ -183,7 +183,7 @@
   "dataAccess": {
     "connectedNoSessions": "已連結 {{tool}} 資料夾，但尚未找到任何工作階段。",
     "trySample": "使用範例資料瀏覽",
-    "pickerTitle": "選擇你的 {{tool}} 紀錄資料夾（{{path}}）",
+    "pickerTitle": "選擇你的 {{tool}} 資料夾（{{path}}）",
     "sampleBannerTitle": "目前顯示的是範例資料",
     "sampleBannerBody": "這些工作階段是產生出來的範例。連結你自己的紀錄即可查看實際用量。",
     "exitSample": "離開範例資料",
@@ -216,6 +216,7 @@
       "none": "這台 Mac 上找不到 Claude Code 或 Codex CLI。",
       "planUnknown": "方案不明",
       "refreshNow": "立即重新整理",
+      "allowFolder": "允許存取",
       "refreshing": "重新整理中…",
       "online": {
         "label": "線上檢查方案額度",
@@ -263,7 +264,8 @@
       "days": "{{count}} 天前"
     },
     "issue": {
-      "credentials_unreadable": "無法讀取此工具的登入資訊。可能是鑰匙圈拒絕存取，或在 App Store 版本中，「紀錄目錄」所選的資料夾未包含它（請直接選擇 ~/.claude 或 ~/.codex）。",
+      "credentials_unreadable": "尚未顯示方案與額度。請允許存取此工具的整個資料夾（不只是紀錄），即可顯示。",
+      "keychain_unreadable": "Arlo 無法從 macOS 鑰匙圈讀取此工具的登入資訊。若你先前拒絕了鑰匙圈的授權提示，請重新啟動 Arlo 並選擇「一律允許」。用量與費用不受影響。",
       "sign_in_expired": "已儲存的登入已過期。執行一次該工具即可更新。",
       "no_usage_access": "此登入為長效權杖，無法回報方案額度。請用 /login 登入後即可查看。",
       "unauthorized": "供應商拒絕了已儲存的登入。請重新登入該工具。",

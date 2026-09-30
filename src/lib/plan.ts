@@ -23,7 +23,19 @@ const WEEK = 7 * DAY;
  * API key without a problem, a tool has no limits to show.
  */
 export function planTools(report: PlanReport | null): PlanStatus[] {
-  return (report?.tools ?? []).filter((t) => t.auth === "subscription" || t.issue !== null);
+  return (report?.tools ?? []).filter(
+    (t) => t.auth === "subscription" || (t.issue !== null && !isQuietIssue(t.issue)),
+  );
+}
+
+/**
+ * Issues that come from how the app is installed, not from anything the user
+ * did wrong: the sign-in file is out of the granted folder's reach, or the
+ * keychain is out of the sandbox's. They are explained in Settings only —
+ * on the dashboard they would make a working app look broken.
+ */
+export function isQuietIssue(issue: PlanIssue): boolean {
+  return issue.kind === "credentials_unreadable" || issue.kind === "keychain_unreadable";
 }
 
 /** What a window limits, named by its length: "5-hour limit", "Weekly limit". */
