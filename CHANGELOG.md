@@ -6,6 +6,23 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
+## [1.0.6] - 2026-09-30
+
+### Added
+
+- A direct-download build for macOS (notarized .dmg on GitHub Releases). It isn't sandboxed, so it can
+  run your Claude Code CLI for live insights, `/context`, and Run in Claude Code.
+
+### Changed
+
+- The App Store version no longer shows Claude CLI features it can't run. Insights and the live
+  context card show the Terminal commands to run them yourself, with copy buttons.
+- Sample data has its own message instead of sharing one with the App Store version.
+
+### Fixed
+
+- Rust 1.98 Clippy lint in the Claude insights code.
+
 ## [1.0.5] - 2026-09-28
 
 ### Added
@@ -122,6 +139,7 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 First App Store release: token and cost reports for Claude Code and Codex CLI, read from local logs,
 with a dashboard, session details, charts, and English / 繁體中文 / 日本語 UI.
 
+[1.0.6]: https://github.com/kaija/arlo-ai-analyzer/compare/v1.0.5...v1.0.6
 [1.0.5]: https://github.com/kaija/arlo-ai-analyzer/compare/v1.0.4...v1.0.5
 [1.0.4]: https://github.com/kaija/arlo-ai-analyzer/compare/v1.0.3...v1.0.4
 [1.0.3]: https://github.com/kaija/arlo-ai-analyzer/compare/v1.0.2...v1.0.3
